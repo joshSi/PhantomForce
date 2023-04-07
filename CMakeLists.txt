@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(CMakeSFMLProject LANGUAGES CXX)
+project(PhantomForce LANGUAGES CXX)
 
 include(FetchContent)
 FetchContent_Declare(SFML
@@ -7,16 +7,24 @@ FetchContent_Declare(SFML
     GIT_TAG 2.6.x)
 FetchContent_MakeAvailable(SFML)
 
-add_executable(CMakeSFMLProject  src/Main.cpp)
-target_sources(CMakeSFMLProject PRIVATE
-                            src/Game.h
-                            src/Game.cpp
-                           )
-target_link_libraries(CMakeSFMLProject PRIVATE sfml-graphics)
-target_compile_features(CMakeSFMLProject PRIVATE cxx_std_17)
+add_executable(PhantomForce  src/Main.cpp)
+
+# Add include directory to the project
+target_include_directories(PhantomForce PRIVATE include)
+
+# Add source files to the project
+target_sources(PhantomForce PRIVATE
+                    src/Player.cpp
+                    src/Game.cpp)
+
+# Add assets directory to the project
+file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
+
+target_link_libraries(PhantomForce PRIVATE sfml-graphics)
+target_compile_features(PhantomForce PRIVATE cxx_std_17)
 if (WIN32 AND BUILD_SHARED_LIBS)
-    add_custom_command(TARGET CMakeSFMLProject POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:CMakeSFMLProject> $<TARGET_FILE_DIR:CMakeSFMLProject> COMMAND_EXPAND_LISTS)
+    add_custom_command(TARGET PhantomForce POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:PhantomForce> $<TARGET_FILE_DIR:PhantomForce> COMMAND_EXPAND_LISTS)
 endif()
 
-install(TARGETS CMakeSFMLProject)
+install(TARGETS PhantomForce)
