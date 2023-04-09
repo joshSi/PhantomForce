@@ -12,15 +12,15 @@ Player::Player(sf::Texture& tex, MoveStats* s):
 	stat(s),
 	spd_vec(0,0)
 {
-	setScale(4, 4);
+  setScale(4, 4);
 	setTexture(tex);
 }
 
 void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input)
 {
-		sf::Vector2f v(
-			int((input & 0b00000001) != 0) - int((input & 0b00000010) != 0),
-			int((input & 0b00000100) != 0) - int((input & 0b00001000) != 0)
+	sf::Vector2f v(
+		int((input & 0b00000001) != 0) - int((input & 0b00000010) != 0),
+		int((input & 0b00000100) != 0) - int((input & 0b00001000) != 0)
 	);
 
   if (len(v) != 0)
