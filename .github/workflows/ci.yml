@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.platform.name }} ${{ matrix.config.name }}
+    name: ${{ matrix.platform.name }} Build
     runs-on: ${{ matrix.platform.os }}
 
     strategy:
@@ -17,8 +17,6 @@ jobs:
         - { name: Windows, os: windows-latest }
         - { name: Linux,      os: ubuntu-latest }
         - { name: MacOS,    os: macos-latest }
-        config:
-        - { name: Static, flags: -DBUILD_SHARED_LIBS=OFF }
 
     steps:
     - name: Install Linux Dependencies
@@ -39,3 +37,18 @@ jobs:
     - name: Install
       shell: bash
       run: cmake --install build --config Release
+
+  status:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set status
+        uses: rtCamp/github-status-action@v2.3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          state: ${{ job.status }}
+          description: "The build has completed."
+          context: "continuous-integration/build"
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
