@@ -13,7 +13,6 @@ Game::Game(int framerate)
   sf::Texture tex;
 
   std::vector<sf::Sprite*> game_sprites[4];
-  std::bitset<8> keyboard_input{ 0b00000101 };
   MoveStats def({9.0f, 1.0f, 0.9f, 1.0f});
 
 	if (!(tex.loadFromFile("assets/player.png")))
