@@ -1,4 +1,4 @@
-name: CI
+name: Build
 
 on:
   push:
@@ -37,18 +37,3 @@ jobs:
     - name: Install
       shell: bash
       run: cmake --install build --config Release
-
-  status:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set status
-        uses: rtCamp/github-status-action@v2.3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          state: ${{ job.status }}
-          description: "The build has completed."
-          context: "continuous-integration/build"
-
-env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
