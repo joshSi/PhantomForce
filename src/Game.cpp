@@ -34,13 +34,21 @@ Game::Game(int framerate) : m_input(0)
     clock.restart();
 
     pollEvents();
-    std::cout << m_input << std::endl;
-    
-    float e = get_angle(sf::Vector2f(sf::Mouse::getPosition(*m_window)) - play.getPosition());
+
+    sf::Vector2f mouse_pos = m_window->mapPixelToCoords(sf::Mouse::getPosition(*m_window), m_window->getView());
+    sf::Vector2f player_pos = play.getPosition();
+    float play_dir = get_angle(sf::Vector2f(mouse_pos) - player_pos);
 
     m_window->clear();
+
+    sf::View view = m_window->getView();
+    sf::Vector2f v_center((3 * player_pos.x + mouse_pos.x) / 4.0f, (3 * player_pos.y + mouse_pos.y) / 4.0f);
+    view.setCenter(v_center);
+    m_window->setView(view);
+
+
     play.move(sf::Vector2f(3,3), frame, false, m_input);
-    play.setRotation(e);
+    play.setRotation(play_dir);
 
     for (int i = 3; i >= 1; i--)
 		{
