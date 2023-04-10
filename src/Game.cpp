@@ -4,11 +4,11 @@
 #include "utils.h"
 #include <iostream>
 
-Game::Game(int framerate)
+Game::Game(int framerate) : m_input(0)
 {
   sf::Clock clock;
-  sf::RenderWindow window { { 600u, 480u }, "Phantom Force" };
-  window.setFramerateLimit(framerate);
+  m_window = new sf::RenderWindow { { 600u, 480u }, "Phantom Force" };
+  m_window->setFramerateLimit(framerate);
 
   sf::Texture tex;
 
@@ -28,76 +28,85 @@ Game::Game(int framerate)
   spr.setTexture(tex);
   spr.setPosition(200, 200);
 
-  uint8_t input = 0;
-
-  while (window.isOpen())
+  while (m_window->isOpen())
   {
     float frame = clock.getElapsedTime().asSeconds() * 60;
     clock.restart();
 
-    for (auto event = sf::Event{}; window.pollEvent(event);)
-    {
+    pollEvents();
+    std::cout << m_input << std::endl;
+    
+    float e = get_angle(sf::Vector2f(sf::Mouse::getPosition(*m_window)) - play.getPosition());
 
-      if (event.type == sf::Event::Closed)
-      {
-        window.close();
-      } else if (event.type == sf::Event::KeyPressed)
-      {
-        switch (event.key.code)
-        {
-        case sf::Keyboard::A:
-          input |= 0b00000010; // Set bit 1 (left)
-          break;
-        case sf::Keyboard::D:
-          input |= 0b00000001; // Set bit 0 (right)
-          break;
-        case sf::Keyboard::W:
-          input |= 0b00001000; // Set bit 3 (up)
-          break;
-        case sf::Keyboard::S:
-          input |= 0b00000100; // Set bit 2 (down)
-          break;
-        case sf::Keyboard::Escape:
-          window.close();
-          break;
-        default:
-          break;
-        }
-      } else if (event.type == sf::Event::KeyReleased)
-      {
-        switch (event.key.code)
-        {
-        case sf::Keyboard::A:
-          input &= ~0b00000010; // Reset bit 1 (left)
-          break;
-        case sf::Keyboard::D:
-          input &= ~0b00000001; // Reset bit 0 (right)
-          break;
-        case sf::Keyboard::W:
-          input &= ~0b00001000; // Reset bit 3 (up)
-          break;
-        case sf::Keyboard::S:
-          input &= ~0b00000100; // Reset bit 2 (down)
-          break;
-        default:
-          break;
-        }
-      }
-    }
-
-    float e = get_angle(sf::Vector2f(sf::Mouse::getPosition(window)) - play.getPosition());
-
-    window.clear();
-    play.move(sf::Vector2f(3,3), frame, false, input);
+    m_window->clear();
+    play.move(sf::Vector2f(3,3), frame, false, m_input);
     play.setRotation(e);
 
     for (int i = 3; i >= 1; i--)
 		{
 			for (int j = 0; j < game_sprites[i].size(); j++)
 			{
-				window.draw(*game_sprites[i][j]);
+				m_window->draw(*game_sprites[i][j]);
 			}
 		}
-    window.display();
+    m_window->display();
+  }
+}
+
+Game::~Game()
+{
+  delete m_window;
+}
+
+void Game::pollEvents()
+{
+  sf::Event event;
+  while (m_window->pollEvent(event))
+  {
+    if (event.type == sf::Event::Closed)
+    {
+      m_window->close();
+    } else if (event.type == sf::Event::KeyPressed)
+    {
+      switch (event.key.code)
+      {
+      case sf::Keyboard::A:
+        m_input |= 0b00000010; // Set bit 1 (left)
+        break;
+      case sf::Keyboard::D:
+        m_input |= 0b00000001; // Set bit 0 (right)
+        break;
+      case sf::Keyboard::W:
+        m_input |= 0b00001000; // Set bit 3 (up)
+        break;
+      case sf::Keyboard::S:
+        m_input |= 0b00000100; // Set bit 2 (down)
+        break;
+      case sf::Keyboard::Escape:
+        m_window->close();
+        break;
+      default:
+        break;
+      }
+    } else if (event.type == sf::Event::KeyReleased)
+    {
+      switch (event.key.code)
+      {
+      case sf::Keyboard::A:
+        m_input &= ~0b00000010; // Reset bit 1 (left)
+        break;
+      case sf::Keyboard::D:
+        m_input &= ~0b00000001; // Reset bit 0 (right)
+        break;
+      case sf::Keyboard::W:
+        m_input &= ~0b00001000; // Reset bit 3 (up)
+        break;
+      case sf::Keyboard::S:
+        m_input &= ~0b00000100; // Reset bit 2 (down)
+        break;
+      default:
+        break;
+      }
+    }
   }
 }
