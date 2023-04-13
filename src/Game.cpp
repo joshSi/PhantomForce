@@ -21,7 +21,6 @@ Game::Game(int framerate) : m_input(0)
 	}
 
   Player play = Player(tex, &def);
-  play.setOrigin(32, 32);
   game_sprites[1].push_back(&play);
 
   sf::Sprite spr;
@@ -30,8 +29,7 @@ Game::Game(int framerate) : m_input(0)
 
   while (m_window->isOpen())
   {
-    float frame = clock.getElapsedTime().asSeconds() * 60;
-    clock.restart();
+    float frame = clock.restart().asSeconds() * 60;
 
     pollEvents();
 

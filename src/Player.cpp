@@ -14,6 +14,8 @@ Player::Player(sf::Texture& tex, MoveStats* s):
 {
   setScale(4, 4);
 	setTexture(tex);
+	sf::Vector2f player_size = sf::Vector2f(getLocalBounds().width, getLocalBounds().height);
+	setOrigin( player_size.x / 2, player_size.y / 2);
 }
 
 void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input)
@@ -24,7 +26,7 @@ void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input)
 	);
 
   if (len(v) != 0)
-	  std::cout << fr << " i: " << int(input) << std::endl;
+	  std::cout << this->getPosition().x << ", " << this->getPosition().y << std::endl;
 
 	if (len(v))
 		spd_vec += v * (stat->accel * fr / len(v));
