@@ -1,5 +1,6 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <SFML/Graphics.hpp>
 
