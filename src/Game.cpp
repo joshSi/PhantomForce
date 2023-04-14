@@ -4,11 +4,11 @@
 #include "utils.h"
 #include <iostream>
 
-Game::Game(int framerate)
+Game::Game(int framerate) : m_input(0)
 {
   sf::Clock clock;
-  sf::RenderWindow window { { 600u, 480u }, "Phantom Force" };
-  window.setFramerateLimit(framerate);
+  m_window = new sf::RenderWindow { { 600u, 480u }, "Phantom Force" };
+  m_window->setFramerateLimit(framerate);
 
   sf::Texture tex;
 
@@ -21,83 +21,98 @@ Game::Game(int framerate)
 	}
 
   Player play = Player(tex, &def);
-  play.setOrigin(32, 32);
   game_sprites[1].push_back(&play);
 
   sf::Sprite spr;
   spr.setTexture(tex);
   spr.setPosition(200, 200);
 
-  uint8_t input = 0;
-
-  while (window.isOpen())
+  while (m_window->isOpen())
   {
-    float frame = clock.getElapsedTime().asSeconds() * 60;
-    clock.restart();
+    float frame = clock.restart().asSeconds() * 60;
 
-    for (auto event = sf::Event{}; window.pollEvent(event);)
-    {
+    pollEvents();
 
-      if (event.type == sf::Event::Closed)
-      {
-        window.close();
-      } else if (event.type == sf::Event::KeyPressed)
-      {
-        switch (event.key.code)
-        {
-        case sf::Keyboard::A:
-          input |= 0b00000010; // Set bit 1 (left)
-          break;
-        case sf::Keyboard::D:
-          input |= 0b00000001; // Set bit 0 (right)
-          break;
-        case sf::Keyboard::W:
-          input |= 0b00001000; // Set bit 3 (up)
-          break;
-        case sf::Keyboard::S:
-          input |= 0b00000100; // Set bit 2 (down)
-          break;
-        case sf::Keyboard::Escape:
-          window.close();
-          break;
-        default:
-          break;
-        }
-      } else if (event.type == sf::Event::KeyReleased)
-      {
-        switch (event.key.code)
-        {
-        case sf::Keyboard::A:
-          input &= ~0b00000010; // Reset bit 1 (left)
-          break;
-        case sf::Keyboard::D:
-          input &= ~0b00000001; // Reset bit 0 (right)
-          break;
-        case sf::Keyboard::W:
-          input &= ~0b00001000; // Reset bit 3 (up)
-          break;
-        case sf::Keyboard::S:
-          input &= ~0b00000100; // Reset bit 2 (down)
-          break;
-        default:
-          break;
-        }
-      }
-    }
+    sf::Vector2f mouse_pos = m_window->mapPixelToCoords(sf::Mouse::getPosition(*m_window), m_window->getView());
+    sf::Vector2f player_pos = play.getPosition();
+    float play_dir = get_angle(sf::Vector2f(mouse_pos) - player_pos);
 
-    float e = get_angle(sf::Vector2f(sf::Mouse::getPosition(window)) - play.getPosition());
+    m_window->clear();
 
-    window.clear();
-    play.move(sf::Vector2f(3,3), frame, false, input);
-    play.setRotation(e);
+    sf::View view = m_window->getView();
+    sf::Vector2f v_center((3 * player_pos.x + mouse_pos.x) / 4.0f, (3 * player_pos.y + mouse_pos.y) / 4.0f);
+    view.setCenter(v_center);
+    m_window->setView(view);
+
+
+    play.move(sf::Vector2f(3,3), frame, false, m_input);
+    play.setRotation(play_dir);
 
     for (int i = 3; i >= 1; i--)
 		{
 			for (int j = 0; j < game_sprites[i].size(); j++)
 			{
-				window.draw(*game_sprites[i][j]);
+				m_window->draw(*game_sprites[i][j]);
 			}
 		}
-    window.display();
+    m_window->display();
+  }
+}
+
+Game::~Game()
+{
+  delete m_window;
+}
+
+void Game::pollEvents()
+{
+  sf::Event event;
+  while (m_window->pollEvent(event))
+  {
+    if (event.type == sf::Event::Closed)
+    {
+      m_window->close();
+    } else if (event.type == sf::Event::KeyPressed)
+    {
+      switch (event.key.code)
+      {
+      case sf::Keyboard::A:
+        m_input |= 0b00000010; // Set bit 1 (left)
+        break;
+      case sf::Keyboard::D:
+        m_input |= 0b00000001; // Set bit 0 (right)
+        break;
+      case sf::Keyboard::W:
+        m_input |= 0b00001000; // Set bit 3 (up)
+        break;
+      case sf::Keyboard::S:
+        m_input |= 0b00000100; // Set bit 2 (down)
+        break;
+      case sf::Keyboard::Escape:
+        m_window->close();
+        break;
+      default:
+        break;
+      }
+    } else if (event.type == sf::Event::KeyReleased)
+    {
+      switch (event.key.code)
+      {
+      case sf::Keyboard::A:
+        m_input &= ~0b00000010; // Reset bit 1 (left)
+        break;
+      case sf::Keyboard::D:
+        m_input &= ~0b00000001; // Reset bit 0 (right)
+        break;
+      case sf::Keyboard::W:
+        m_input &= ~0b00001000; // Reset bit 3 (up)
+        break;
+      case sf::Keyboard::S:
+        m_input &= ~0b00000100; // Reset bit 2 (down)
+        break;
+      default:
+        break;
+      }
+    }
   }
 }
