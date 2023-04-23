@@ -1,19 +1,25 @@
 #include <SFML/Graphics.hpp>
 #include "Game.h"
 #include "Player.h"
+#include "TileMap.h"
 #include "utils.h"
 #include <iostream>
 
 Game::Game(int framerate) : m_input(0)
 {
   sf::Clock clock;
-  m_window = new sf::RenderWindow { { 600u, 480u }, "Phantom Force" };
+  m_window = new sf::RenderWindow { { 1000u, 800u }, "Phantom Force" };
   m_window->setFramerateLimit(framerate);
 
   sf::Texture tex;
+  sf::Texture background_tex;
 
   std::vector<sf::Sprite*> game_sprites[4];
-  MoveStats def({9.0f, 1.0f, 0.9f, 1.0f});
+  MoveStats def({5.0f, 0.5f, 0.8f, 1.0f});
+
+  sf::View view = m_window->getView();
+  view.zoom(0.25f);
+  m_window->setView(view);
 
 	if (!(tex.loadFromFile("assets/player.png")))
 	{
@@ -23,9 +29,21 @@ Game::Game(int framerate) : m_input(0)
   Player play = Player(tex, &def);
   game_sprites[1].push_back(&play);
 
-  sf::Sprite spr;
-  spr.setTexture(tex);
-  spr.setPosition(200, 200);
+  // Load the background texture and create a sprite for it
+  if (!(background_tex.loadFromFile("assets/background.png")))
+	{
+		std::cerr << "Loading background failed" << std::endl;
+	}
+  background_tex.setRepeated(true);
+  // sf::Sprite background(background_tex);
+
+  TileMap background_map;
+  int* p = new int[100];
+  for (int i = 0; i < 100; i++)
+    p[i] = 0;
+  p[2] = 2;
+  p[4] = 1;
+  background_map.load("assets/background.png", sf::Vector2u(32, 32), p, 10, 10);
 
   while (m_window->isOpen())
   {
@@ -40,6 +58,7 @@ Game::Game(int framerate) : m_input(0)
     m_window->clear();
 
     sf::View view = m_window->getView();
+    std::cout << view.getCenter().x << " " << view.getCenter().y << std::endl;
     sf::Vector2f v_center((3 * player_pos.x + mouse_pos.x) / 4.0f, (3 * player_pos.y + mouse_pos.y) / 4.0f);
     view.setCenter(v_center);
     m_window->setView(view);
@@ -47,6 +66,14 @@ Game::Game(int framerate) : m_input(0)
 
     play.move(sf::Vector2f(3,3), frame, false, m_input);
     play.setRotation(play_dir);
+
+    // Set the background sprite's position to an offset based on the camera position
+    // sf::FloatRect view_bounds = view.getViewport();
+    // background.setPosition(view.getCenter() - sf::Vector2f(view.getSize().x / 2, view.getSize().y / 2));
+    // background.setTextureRect(sf::IntRect(background.getPosition().x / 32, background.getPosition().y / 32, view.getSize().x / 32, view.getSize().y / 32));
+    // background.setScale(4, 4);
+    // Draw the background sprite first
+    m_window->draw(background_map);
 
     for (int i = 3; i >= 1; i--)
 		{

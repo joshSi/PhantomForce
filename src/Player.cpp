@@ -5,14 +5,12 @@
 Player::Player():
 	spd_vec(0,0)
 {
-	setScale(4, 4);
 }
 
 Player::Player(sf::Texture& tex, MoveStats* s):
 	stat(s),
 	spd_vec(0,0)
 {
-  setScale(4, 4);
 	setTexture(tex);
 	sf::Vector2f player_size = sf::Vector2f(getLocalBounds().width, getLocalBounds().height);
 	setOrigin( player_size.x / 2, player_size.y / 2);
