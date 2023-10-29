@@ -27,6 +27,7 @@ Game::Game(int framerate) : m_input(0)
 	}
 
   Player play = Player(tex, &def);
+  play.setPosition(10, 10);
   game_sprites[1].push_back(&play);
 
   // Load the background texture and create a sprite for it
@@ -38,12 +39,14 @@ Game::Game(int framerate) : m_input(0)
   // sf::Sprite background(background_tex);
 
   TileMap background_map;
-  int* p = new int[100];
-  for (int i = 0; i < 100; i++)
-    p[i] = 0;
-  p[2] = 2;
-  p[4] = 1;
-  background_map.load("assets/background.png", sf::Vector2u(32, 32), p, 10, 10);
+  int* p = new int[100000];
+  for (int i = 0; i < 100000; i++)
+    p[i] = i%4+2;
+  p[130] = 2;
+  p[420] = 0;
+  background_map.loadTileset("assets/background.png", sf::Vector2u(32, 32));
+  background_map.loadMap(p, 100, 1000, view);
+  background_map.flash(sf::Vector2f(0.f,0.f));
 
   while (m_window->isOpen())
   {
@@ -57,22 +60,17 @@ Game::Game(int framerate) : m_input(0)
 
     m_window->clear();
 
-    sf::View view = m_window->getView();
-    std::cout << view.getCenter().x << " " << view.getCenter().y << std::endl;
+    view = m_window->getView();
+    // std::cout << view.getCenter().x << " " << view.getCenter().y << std::endl;
     sf::Vector2f v_center((3 * player_pos.x + mouse_pos.x) / 4.0f, (3 * player_pos.y + mouse_pos.y) / 4.0f);
     view.setCenter(v_center);
     m_window->setView(view);
+    background_map.loadVertexChunk(v_center);
 
 
     play.move(sf::Vector2f(3,3), frame, false, m_input);
     play.setRotation(play_dir);
 
-    // Set the background sprite's position to an offset based on the camera position
-    // sf::FloatRect view_bounds = view.getViewport();
-    // background.setPosition(view.getCenter() - sf::Vector2f(view.getSize().x / 2, view.getSize().y / 2));
-    // background.setTextureRect(sf::IntRect(background.getPosition().x / 32, background.getPosition().y / 32, view.getSize().x / 32, view.getSize().y / 32));
-    // background.setScale(4, 4);
-    // Draw the background sprite first
     m_window->draw(background_map);
 
     for (int i = 3; i >= 1; i--)

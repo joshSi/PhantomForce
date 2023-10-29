@@ -23,9 +23,6 @@ void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input)
 		int((input & 0b00000100) != 0) - int((input & 0b00001000) != 0)
 	);
 
-  if (len(v) != 0)
-	  std::cout << this->getPosition().x << ", " << this->getPosition().y << std::endl;
-
 	if (len(v))
 		spd_vec += v * (stat->accel * fr / len(v));
 
