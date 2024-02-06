@@ -45,8 +45,10 @@ Game::Game(int framerate) : m_input(0)
   int* p = new int[10000];
   for (int i = 0; i < 10000; i++)
     p[i] = i%4;
-  p[130] = 2;
-  p[420] = 0;
+  p[101] = 15;
+  p[102] = 16;
+  p[203] = 15;
+  p[302] = 15;
   background_map.loadTileset("assets/background.png", sf::Vector2u(32, 32));
   background_map.loadMap(p, 100, 100, view);
   background_map.flash(sf::Vector2i(0, 0));

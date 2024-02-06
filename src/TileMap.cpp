@@ -1,7 +1,7 @@
 #include "TileMap.h"
 #include <SFML/Graphics.hpp>
 #include <iostream>
-#include <algorithm>
+#include "utils.h"
 
 bool TileMap::loadTileset(const std::string& tileset, sf::Vector2u tileSize)
 {
@@ -19,8 +19,8 @@ void TileMap::loadMap(const int* tiles, unsigned int mapWidth, unsigned int mapH
     m_tiles[i] = tiles[i];
 
   m_mapSize = sf::Vector2u(mapWidth, mapHeight);
-  sf::Vector2f chunk = view.getSize() * 1.2f;
-  m_chunkSize = sf::Vector2u(chunk.x / m_tileSize.x, chunk.y / m_tileSize.y);
+  sf::Vector2f chunk = view.getSize() * 5.0f;
+  m_chunkSize = sf::Vector2u(chunk.x / m_tileSize.x + 1, chunk.y / m_tileSize.y + 1);
 
   m_vertices.setPrimitiveType(sf::Quads);
   m_vertices.resize(m_chunkSize.x * m_chunkSize.y * 4);
@@ -31,31 +31,25 @@ void TileMap::loadMap(const int* tiles, unsigned int mapWidth, unsigned int mapH
 void TileMap::loadVertexChunk(sf::Vector2f view_coord)
 {
   /**
-   * chunkLimits represent the furthest distance the view center
+   * chunkLimit represents the furthest distance the view center
    * can to be from the chunk center before chunk is redrawn
    */
   float chunkLimit_x = m_chunkSize.x * m_tileSize.x * 0.5;
   float chunkLimit_y = m_chunkSize.y * m_tileSize.y * 0.5;
 
+  if (len(m_center - view_coord) < len(sf::Vector2f(chunkLimit_x, chunkLimit_y)) * 0.3)
+    return;
+  
+
+  std::cout << "(" << view_coord.x << ", " << view_coord.y << ")" << std::endl;
+  std::cout << m_center.x << ", " << m_center.y << std::endl;
+
+  m_center = view_coord;
   // t represents the topleft corner of the view
-  float tl_x = std::max(view_coord.x - chunkLimit_x, 0.0f);
-  float tl_y = std::max(view_coord.y - chunkLimit_y, 0.0f);
   float t_x = std::max(view_coord.x - chunkLimit_x, 0.0f);
   float t_y = std::max(view_coord.y - chunkLimit_y, 0.0f);
 
-  // if 
-  if (t_x >= (m_center.x - chunkLimit_x) && t_x <= (m_center.x + chunkLimit_x)
-    && t_y >= (m_center.y - chunkLimit_y) && t_y <= (m_center.y + chunkLimit_y))
-    {
-      return;
-    }
-
-  m_center = view_coord;
-
-  std::cout << t_x << " " << (m_center.x - chunkLimit_x) << ", " << t_y << " " << (m_center.y - chunkLimit_y) << std::endl;
-  // std::cout << "c" << chunkLimit_x << ", " << chunkLimit_y << std::endl;
-
-  // flash(sf::Vector2f(t_x / m_tileSize.x, t_y / m_tileSize.y));
+  flash(sf::Vector2i(t_x / m_tileSize.x, t_y / m_tileSize.y));
 }
 
 void TileMap::flash(sf::Vector2i t)
