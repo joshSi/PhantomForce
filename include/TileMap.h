@@ -8,7 +8,8 @@ public:
     bool loadTileset(const std::string& tileset, sf::Vector2u tileSize);
     void loadMap(const int* tiles, unsigned int mapWidth, unsigned int mapHeight, sf::View view);
     void loadVertexChunk(sf::Vector2f view_coord);
-    void flash(sf::Vector2f v);
+    // Flashes the chunk with tile v as the topleft corner
+    void flash(sf::Vector2i v);
 
 private:
     virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;

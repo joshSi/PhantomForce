@@ -21,6 +21,7 @@ float len(const sf::Vector2<T> v) {
 	return sqrtf(powf(v.x, 2) + powf(v.y, 2));
 }
 
+// Helper function keeps x between -180 & 180 degrees
 template<typename T>
 void normalize(T& x) {
 	if (x > 180) {
@@ -29,6 +30,11 @@ void normalize(T& x) {
 	if (x <= -180) {
 		x += 360;
 	}
+}
+
+template<typename T>
+sf::Vector2<T> max(sf::Vector2<T> a, sf::Vector2<T> b) {
+	return sf::Vector2<T>(std::max(a.x, b.x), std::max(a.y, b.y));
 }
 
 #endif
