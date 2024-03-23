@@ -11,14 +11,14 @@ struct MoveStats {
 
 class Player : public sf::Sprite
 {
-public:
-	Player();
-	Player(sf::Texture& tex, MoveStats* s);
-	void move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input);
+	public:
+		Player();
+		Player(sf::Texture& tex, MoveStats* s);
+		void move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input);
 
-private:
-	sf::Vector2f spd_vec;
-	MoveStats* stat;
+	private:
+		sf::Vector2f spd_vec;
+		MoveStats* stat;
 };
 
 #endif
