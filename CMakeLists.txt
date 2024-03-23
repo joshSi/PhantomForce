@@ -22,7 +22,8 @@ target_include_directories(PhantomForce PRIVATE include)
 # Add source files to the project
 target_sources(PhantomForce PRIVATE
           src/Player.cpp
-          src/Game.cpp)
+          src/Game.cpp
+          src/TileMap.cpp)
 
 # Add assets directory to the project
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
