@@ -3,17 +3,6 @@ project(PhantomForce LANGUAGES CXX)
 
 find_package(SFML 2.5 COMPONENTS graphics window system)
 
-# If SFML was not found, download with FetchContent
-if(NOT SFML_FOUND)
-  message("SFML not found, downloading...")
-  include(FetchContent)
-  FetchContent_Declare(SFML
-    GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 2.6.x
-  )
-  FetchContent_MakeAvailable(SFML)
-endif()
-
 add_executable(PhantomForce  src/Main.cpp)
 
 # Add include directory to the project
