@@ -5,10 +5,12 @@
 #include "utils.h"
 #include <iostream>
 
+const float MAX_VIEW_WIDTH = 250;
+
 Game::Game(int framerate) : m_input(0)
 {
   sf::Clock clock;
-  m_window = new sf::RenderWindow { { 1000u, 800u }, "Phantom Force" };
+  m_window = new sf::RenderWindow { { 1600u, 900u }, "Phantom Force" };
   m_window->setFramerateLimit(framerate);
 
   sf::Texture tex;
@@ -17,10 +19,9 @@ Game::Game(int framerate) : m_input(0)
   std::vector<sf::Sprite*> game_sprites[4];
   MoveStats def({5.0f, 0.5f, 0.8f, 1.0f});
 
-
   // Viewport of 250 x 200, 1/4 of the original window 1000 x 800
-  sf::View view = m_window->getView();
-  sf::Vector2f minCenter = sf::Vector2f(125.f, 100.f);
+  view = m_window->getView();
+  sf::Vector2f minCenter = sf::Vector2f(view.getSize().x / 4, view.getSize().y / 4);
   view.zoom(0.25f);
   m_window->setView(view);
 
@@ -30,7 +31,7 @@ Game::Game(int framerate) : m_input(0)
 	}
 
   Player play = Player(tex, &def);
-  play.setPosition(10, 10);
+  play.setPosition(250, 500);
   game_sprites[1].push_back(&play);
 
   // Load the background texture and create a sprite for it
@@ -39,7 +40,6 @@ Game::Game(int framerate) : m_input(0)
 		std::cerr << "Loading background failed" << std::endl;
 	}
   background_tex.setRepeated(true);
-  // sf::Sprite background(background_tex);
 
   TileMap background_map;
   int* p = new int[10000];
@@ -140,6 +140,13 @@ void Game::pollEvents()
       default:
         break;
       }
+    } else if (event.type == sf::Event::Resized)
+    {
+      // Resized size
+      sf::Vector2u size = m_window->getSize();
+      view.setSize(sf::Vector2f(size.x / 4, size.y / 4));
+      m_window->setView(view);
+      // Adapt new view to resized window
     }
   }
 }

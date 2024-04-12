@@ -13,6 +13,7 @@ class Game
 		void pollEvents();
 	private:
 		sf::RenderWindow* m_window;
+		sf::View view;
 		uint8_t m_input;
 };
 
