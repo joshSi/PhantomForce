@@ -1,5 +1,5 @@
-#ifndef COREFOUNDATIONUTIL_H 
-#define COREFOUNDATIONUTIL_H
+#ifndef PLATFORM_UTILS_H 
+#define PLATFORM_UTILS_H
 #ifdef __APPLE__
 #include <CoreFoundation/CoreFoundation.h>
 #endif
@@ -18,9 +18,8 @@ std::string getResourcePath() {
 
     return resourcePath;
   #elif defined(_WIN32)
-    // TODO: Windows resources
     return "";
-  #elif defined(__LINUX__)
+  #else
     // TODO: Linux resources
     return "";
   #endif
