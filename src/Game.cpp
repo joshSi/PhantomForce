@@ -3,11 +3,12 @@
 #include "Player.h"
 #include "TileMap.h"
 #include "utils.h"
-#include <iostream>
+#include "platform_utils.h"
 
 Game::Game(int framerate) : m_input(0)
 {
   sf::Clock clock;
+  const std::string resourcePath = getResourcePath();
   m_window = new sf::RenderWindow { { 1000u, 800u }, "Phantom Force" };
   m_window->setFramerateLimit(framerate);
 
@@ -24,22 +25,14 @@ Game::Game(int framerate) : m_input(0)
   view.zoom(0.25f);
   m_window->setView(view);
 
-	if (!(tex.loadFromFile("assets/player.png")))
+	if (!(tex.loadFromFile(resourcePath + "player.png")))
 	{
-		std::cerr << "Loading texture failed" << std::endl;
+		printf("Loading texture failed\n");
 	}
 
   Player play = Player(tex, &def);
   play.setPosition(10, 10);
   game_sprites[1].push_back(&play);
-
-  // Load the background texture and create a sprite for it
-  if (!(background_tex.loadFromFile("assets/background.png")))
-	{
-		std::cerr << "Loading background failed" << std::endl;
-	}
-  background_tex.setRepeated(true);
-  // sf::Sprite background(background_tex);
 
   TileMap background_map;
   int* p = new int[10000];
@@ -49,7 +42,8 @@ Game::Game(int framerate) : m_input(0)
   p[102] = 16;
   p[203] = 15;
   p[302] = 15;
-  background_map.loadTileset("assets/background.png", sf::Vector2u(32, 32));
+  if (!background_map.loadTileset(resourcePath + "background.png", sf::Vector2u(32, 32)))
+    printf("Loading tileset failed\n");
   background_map.loadMap(p, 100, 100, view);
   background_map.flash(sf::Vector2i(0, 0));
 
