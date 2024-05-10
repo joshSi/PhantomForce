@@ -1,6 +1,5 @@
 #include "TileMap.h"
 #include <SFML/Graphics.hpp>
-#include <iostream>
 #include "utils.h"
 
 bool TileMap::loadTileset(const std::string& tileset, sf::Vector2u tileSize)
@@ -41,8 +40,7 @@ void TileMap::loadVertexChunk(sf::Vector2f view_coord)
     return;
   
 
-  std::cout << "(" << view_coord.x << ", " << view_coord.y << ")" << std::endl;
-  std::cout << m_center.x << ", " << m_center.y << std::endl;
+  // TODO: Tests on view_coord & center to ensure following mouse/player works
 
   m_center = view_coord;
   // t represents the topleft corner of the view
