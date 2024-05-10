@@ -18,8 +18,10 @@ std::string getResourcePath() {
 
     return resourcePath;
   #elif defined(_WIN32)
+    // TODO: Windows resources
     return "";
-  #else
+  #elif defined(__LINUX__)
+    // TODO: Linux resources
     return "";
   #endif
 }
