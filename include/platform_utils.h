@@ -18,7 +18,7 @@ std::string getResourcePath() {
 
     return resourcePath;
   #elif defined(_WIN32)
-    return "";
+    return "assets/";
   #else
     // TODO: Linux resources
     return "";

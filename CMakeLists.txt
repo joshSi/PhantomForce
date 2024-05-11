@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.16)
 project(PhantomForce LANGUAGES CXX)
 
-find_package(SFML 2.5 COMPONENTS graphics window system)
+find_package(SFML 2.6 COMPONENTS graphics window system)
 
 set(SOURCES src/Main.cpp src/Game.cpp src/Player.cpp src/TileMap.cpp)
 set(HEADERS include/utils.h include/platform_utils.h include/Game.h include/Player.h include/TileMap.h)
@@ -14,7 +14,17 @@ if (APPLE)
   add_executable(PhantomForce MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${RESOURCES})
   target_link_libraries(PhantomForce PRIVATE sfml-graphics "-framework CoreFoundation")
 elseif(WIN32)
-  add_executable(PhantomForce WIN32 ${SOURCES} ${HEADERS} ${RESOURCES})
+  if(NOT SFML_FOUND)
+    message("SFML not found, downloading...")
+    include(FetchContent)
+    FetchContent_Declare(SFML
+      GIT_REPOSITORY https://github.com/SFML/SFML.git
+      GIT_TAG 2.6.x
+    )
+    FetchContent_MakeAvailable(SFML)
+  endif()
+  file(COPY ${RESOURCE_PATH} DESTINATION ${CMAKE_BINARY_DIR})
+  add_executable(PhantomForce ${SOURCES} ${HEADERS})
   target_link_libraries(PhantomForce PRIVATE sfml-graphics)
 else()
   # TODO: Linux resources
@@ -34,8 +44,7 @@ if (APPLE)
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin)
 elseif(WIN32)
-  install(TARGETS PhantomForce
-    RUNTIME DESTINATION bin)
+  install(TARGETS PhantomForce)
 else()
   install(TARGETS PhantomForce
     RUNTIME DESTINATION bin)
