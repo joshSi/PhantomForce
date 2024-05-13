@@ -1,6 +1,5 @@
 #include "Player.h"
 #include "utils.h"
-#include <iostream>
 
 Player::Player():
 	spd_vec(0,0)
