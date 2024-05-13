@@ -15,13 +15,17 @@ jobs:
       matrix:
         platform:
         - { name: Windows, os: windows-latest }
-        - { name: Linux,      os: ubuntu-latest }
-        - { name: MacOS,    os: macos-latest }
+        - { name: Linux, os: ubuntu-latest }
+        - { name: MacOS, os: macos-latest }
 
     steps:
     - name: Install Linux Dependencies
       if: runner.os == 'Linux'
       run: sudo apt-get update && sudo apt-get install libsfml-dev
+
+    - name: Install MacOS Dependencies
+      if: runner.os == 'macOS'
+      run: brew install sfml
 
     - name: Checkout
       uses: actions/checkout@v3
