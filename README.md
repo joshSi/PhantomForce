@@ -19,11 +19,14 @@ sudo apt-get install libsfml-dev
 ```
 
 #### MacOS
+
 ```sh
 # May need to run to fetch latest packages
 brew update
 brew install sfml
 ```
+
+### CMake
 
 For a single-configuration generator (typically the case on Linux and macOS):
 
