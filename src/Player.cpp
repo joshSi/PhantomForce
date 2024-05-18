@@ -25,7 +25,8 @@ void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input)
 	if (len(v))
 		spd_vec += v * (stat->accel * fr / len(v));
 
-	if (len(spd_vec)) {
+	if (len(spd_vec))
+	{
 		spd_vec *= powf(stat->fric, fr);
 		if (len(spd_vec) < 0.05f)
 			spd_vec *= 0.f;

@@ -5,7 +5,8 @@
 #endif
 #include <string>
 
-std::string getResourcePath() {
+std::string getResourcePath()
+{
   #ifdef __APPLE__
     CFURLRef appUrlRef = CFBundleCopyBundleURL(CFBundleGetMainBundle());
     CFStringRef macPath = CFURLCopyFileSystemPath(appUrlRef, kCFURLPOSIXPathStyle);
