@@ -31,7 +31,7 @@ else()
   add_executable(PhantomForce ${SOURCES} ${HEADERS} ${RESOURCES})
   target_link_libraries(PhantomForce PRIVATE sfml-graphics)
 endif()
-target_include_directories(PhantomForce PRIVATE include)
+target_include_directories(PhantomForce PRIVATE include include/utils)
 
 target_compile_features(PhantomForce PRIVATE cxx_std_17)
 if (WIN32 AND BUILD_SHARED_LIBS)
