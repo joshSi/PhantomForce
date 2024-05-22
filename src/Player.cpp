@@ -1,18 +1,13 @@
 #include "Player.h"
 #include "utils.h"
 
-Player::Player():
-	spd_vec(0,0)
-{
-}
-
 Player::Player(sf::Texture& tex, MoveStats* s):
-	stat(s),
-	spd_vec(0,0)
+	m_stat(s), spd_vec(0, 0)
 {
 	setTexture(tex);
 	sf::Vector2f player_size = sf::Vector2f(getLocalBounds().width, getLocalBounds().height);
 	setOrigin( player_size.x / 2, player_size.y / 2);
+	// radius = player_size.x / 2;
 }
 
 void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input)
@@ -23,16 +18,23 @@ void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input)
 	);
 
 	if (len(v))
-		spd_vec += v * (stat->accel * fr / len(v));
+		spd_vec += v * (m_stat->accel * fr / len(v));
 
 	if (len(spd_vec))
 	{
-		spd_vec *= powf(stat->fric, fr);
+		spd_vec *= powf(m_stat->fric, fr);
 		if (len(spd_vec) < 0.05f)
 			spd_vec *= 0.f;
 	}
 
-	if (len(spd_vec) > stat->max_spd)
-		spd_vec *= (stat->max_spd / len(spd_vec));
+	if (len(spd_vec) > m_stat->max_spd)
+		spd_vec *= (m_stat->max_spd / len(spd_vec));
+	
+	checkCollision();
 	sf::Sprite::move(spd_vec*fr);
+}
+
+void Player::checkCollision()
+{
+	// TODO: Collision detection
 }
