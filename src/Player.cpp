@@ -2,7 +2,7 @@
 #include "utils.h"
 
 Player::Player(sf::Texture& tex, MoveStats* s):
-	m_stat(s), spd_vec(0, 0)
+	m_stat(s)
 {
 	setTexture(tex);
 	sf::Vector2f player_size = sf::Vector2f(getLocalBounds().width, getLocalBounds().height);
