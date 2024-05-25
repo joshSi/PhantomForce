@@ -18,20 +18,20 @@ void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input)
 	);
 
 	if (len(v))
-		spd_vec += v * (m_stat->accel * fr / len(v));
+		m_spd_vec += v * (m_stat->accel * fr / len(v));
 
-	if (len(spd_vec))
+	if (len(m_spd_vec))
 	{
-		spd_vec *= powf(m_stat->fric, fr);
-		if (len(spd_vec) < 0.05f)
-			spd_vec *= 0.f;
+		m_spd_vec *= powf(m_stat->fric, fr);
+		if (len(m_spd_vec) < 0.05f)
+			m_spd_vec *= 0.f;
 	}
 
-	if (len(spd_vec) > m_stat->max_spd)
-		spd_vec *= (m_stat->max_spd / len(spd_vec));
+	if (len(m_spd_vec) > m_stat->max_spd)
+		m_spd_vec *= (m_stat->max_spd / len(m_spd_vec));
 	
 	checkCollision();
-	sf::Sprite::move(spd_vec*fr);
+	sf::Sprite::move(m_spd_vec*fr);
 }
 
 void Player::checkCollision()

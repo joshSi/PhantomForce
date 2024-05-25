@@ -7,8 +7,8 @@ class Object : virtual public sf::Sprite {
   Object() : m_mass(1){};
   virtual void collide(Object *obj) = 0;
 
-  sf::Vector2f spd_vec;
-  float m_mass;
+  sf::Vector2f m_spd_vec;
+  float m_mass; // 0 if static
 };
 
 class Circle;
@@ -20,6 +20,8 @@ class Circle : public Object {
   void collide(Object *obj) override;
   void collide(Circle *obj);
   void collide(Rectangle *obj);
+  float getRadius() { return m_radius; }
+ private:
   float m_radius;
 };
 
@@ -29,6 +31,8 @@ class Rectangle : public Object {
   void collide(Object *obj) override;
   void collide(Rectangle *obj);
   void collide(Circle *obj);
+  sf::Vector2f getSize() { return m_size; }
+ private:
   sf::Vector2f m_size;
 };
 
