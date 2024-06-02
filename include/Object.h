@@ -4,11 +4,14 @@
 
 class Object : virtual public sf::Sprite {
  public:
-  Object() : m_mass(1){};
+  Object();
+  Object(sf::Texture &tex);
   virtual void collide(Object *obj) = 0;
+  virtual void drawCollision(sf::RenderTarget *target) const = 0;
 
   sf::Vector2f m_spd_vec;
-  float m_mass; // 0 if static
+  float m_mass;  // 0 if static
+  static bool g_draw_collisions;
 };
 
 class Circle;
@@ -17,10 +20,15 @@ class Rectangle;
 class Circle : public Object {
  public:
   Circle() : Object(), m_radius(1) {}
+  Circle(sf::Texture &tex);
+  Circle(sf::Texture &tex, float r) : Object(tex), m_radius(r) {}
+
   void collide(Object *obj) override;
   void collide(Circle *obj);
   void collide(Rectangle *obj);
-  float getRadius() { return m_radius; }
+  void drawCollision(sf::RenderTarget *target) const override;
+  float getRadius() const { return m_radius; }
+
  private:
   float m_radius;
 };
@@ -31,7 +39,9 @@ class Rectangle : public Object {
   void collide(Object *obj) override;
   void collide(Rectangle *obj);
   void collide(Circle *obj);
-  sf::Vector2f getSize() { return m_size; }
+  void drawCollision(sf::RenderTarget *target) const override;
+  sf::Vector2f getSize() const { return m_size; }
+
  private:
   sf::Vector2f m_size;
 };

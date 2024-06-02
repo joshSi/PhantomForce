@@ -13,10 +13,12 @@ struct MoveStats {
 
 class Player : public Circle {
  public:
-  Player(sf::Texture& tex, MoveStats* s);
+  Player(sf::Texture& tex, MoveStats* s, float r);
   void move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input);
+  void setObjects(std::vector<Object*>* objs);
 
  private:
+  std::vector<Object*>* m_objects_ref;
   void checkCollision();
   MoveStats* m_stat;
 };

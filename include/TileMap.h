@@ -2,7 +2,7 @@
 #define TILEMAP_H
 #include <SFML/Graphics.hpp>
 
-class TileMap : public sf::Drawable, public sf::Transformable {
+class TileMap : public sf::Drawable {
  public:
   bool loadTileset(const std::string& tileset, sf::Vector2u tileSize);
   void loadMap(const int* tiles, unsigned int mapWidth, unsigned int mapHeight,
