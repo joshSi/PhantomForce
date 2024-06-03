@@ -13,7 +13,7 @@ Game::Game(int framerate) : m_input(0) {
   m_window->setFramerateLimit(framerate);
 
   sf::Texture tex;
-  sf::Texture background_tex;
+  sf::Texture crate_tex;
 
   MoveStats def({5.0f, 0.5f, 0.8f, 1.0f});
 
@@ -26,6 +26,9 @@ Game::Game(int framerate) : m_input(0) {
   if (!(tex.loadFromFile(resourcePath + "player.png"))) {
     printf("Loading texture failed\n");
   }
+  if (!(crate_tex.loadFromFile(resourcePath + "crate.png"))) {
+    printf("Loading texture failed\n");
+  }
 
   Player play = Player(tex, &def, 6.f);
   play.setPosition(10, 10);
@@ -35,6 +38,10 @@ Game::Game(int framerate) : m_input(0) {
   c.setPosition(160, 40);
   m_object_list.push_back(&c);
   m_sprite_layer[1].push_back(&c);
+  Rectangle r = Rectangle(crate_tex, sf::Vector2f(20.f, 20.f));
+  r.setPosition(90, 240);
+  m_object_list.push_back(&r);
+  m_sprite_layer[1].push_back(&r);
 
   TileMap background_map;
   int* p = new int[10000];

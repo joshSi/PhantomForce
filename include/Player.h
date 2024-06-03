@@ -19,6 +19,7 @@ class Player : public Circle {
 
  private:
   std::vector<Object*>* m_objects_ref;
+  sf::Vector2f m_last_pos;
   void checkCollision();
   MoveStats* m_stat;
 };

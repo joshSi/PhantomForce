@@ -6,7 +6,7 @@ class Object : virtual public sf::Sprite {
  public:
   Object();
   Object(sf::Texture &tex);
-  virtual void collide(Object *obj) = 0;
+  virtual bool check_collision(Object *obj) const = 0;
   virtual void drawCollision(sf::RenderTarget *target) const = 0;
 
   sf::Vector2f m_spd_vec;
@@ -23,9 +23,9 @@ class Circle : public Object {
   Circle(sf::Texture &tex);
   Circle(sf::Texture &tex, float r) : Object(tex), m_radius(r) {}
 
-  void collide(Object *obj) override;
-  void collide(Circle *obj);
-  void collide(Rectangle *obj);
+  bool check_collision(Object *obj) const override;
+  bool check_collision(Circle *obj) const;
+  bool check_collision(Rectangle *obj) const;
   void drawCollision(sf::RenderTarget *target) const override;
   float getRadius() const { return m_radius; }
 
@@ -36,11 +36,13 @@ class Circle : public Object {
 class Rectangle : public Object {
  public:
   Rectangle() : Object(), m_size(2, 2) {}
-  void collide(Object *obj) override;
-  void collide(Rectangle *obj);
-  void collide(Circle *obj);
+  Rectangle(sf::Texture &tex);
+  Rectangle(sf::Texture &tex, sf::Vector2f size) : Object(tex), m_size(size) {}
+  bool check_collision(Object *obj) const override;
+  bool check_collision(Rectangle *obj) const;
+  bool check_collision(Circle *obj) const;
   void drawCollision(sf::RenderTarget *target) const override;
-  sf::Vector2f getSize() const { return m_size; }
+  const sf::Vector2f getSize() const { return m_size; }
 
  private:
   sf::Vector2f m_size;

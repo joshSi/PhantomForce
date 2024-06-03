@@ -22,12 +22,18 @@ void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input) {
 
   sf::Sprite::move(m_spd_vec * fr);
   checkCollision();
+	// printf("Framerate: %f", fr);
+	m_last_pos = getPosition();
 }
 
 void Player::checkCollision() {
   if (m_objects_ref != nullptr)
     for (int i = 0; i < m_objects_ref->size(); i++) {
-      Circle::collide((*m_objects_ref)[i]);
+      if (Circle::check_collision((*m_objects_ref)[i]))
+			{
+				sf::Sprite::setPosition(m_last_pos);
+				m_spd_vec = sf::Vector2f(0.f, 0.f);
+			}
     }
 }
 
