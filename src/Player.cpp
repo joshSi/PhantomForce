@@ -31,8 +31,19 @@ void Player::checkCollision() {
     for (int i = 0; i < m_objects_ref->size(); i++) {
       if (Circle::check_collision((*m_objects_ref)[i]))
 			{
-				sf::Sprite::setPosition(m_last_pos);
-				m_spd_vec = sf::Vector2f(0.f, 0.f);
+        if (dynamic_cast<Circle*>((*m_objects_ref)[i])) {
+          sf::Vector2f m_vec = (*m_objects_ref)[i]->getPosition() - getPosition();
+          const sf::Vector2f tangent = {m_vec.y, -m_vec.x};
+          float cos = tangent.x * m_spd_vec.x + tangent.y * m_spd_vec.y / len(m_vec);
+
+          sf::Sprite::setPosition(m_last_pos);
+          m_spd_vec = cos*tangent/len(tangent);
+          printf("tangent: %f, %f\n", tangent.x, tangent.y);
+          printf("m_spd_vec: %f, %f\n", m_spd_vec.x, m_spd_vec.y);
+        } else if (dynamic_cast<Rectangle*>((*m_objects_ref)[i])) {
+          sf::Sprite::setPosition(m_last_pos);
+          m_spd_vec = sf::Vector2f(0.f, 0.f);
+        }
 			}
     }
 }

@@ -46,7 +46,7 @@ bool Rectangle::check_collision(Object *obj) const {
     return check_collision(static_cast<Circle *>(obj));
   } else if (dynamic_cast<Rectangle *>(obj)) {
     return check_collision(static_cast<Rectangle *>(obj));
-  }
+  } else return false;
 }
 
 bool Circle::check_collision(Circle *obj) const {
