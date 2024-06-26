@@ -22,29 +22,36 @@ void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input) {
 
   sf::Sprite::move(m_spd_vec * fr);
   checkCollision();
-	// printf("Framerate: %f", fr);
-	m_last_pos = getPosition();
+  m_last_pos = getPosition();
 }
 
 void Player::checkCollision() {
   if (m_objects_ref != nullptr)
     for (int i = 0; i < m_objects_ref->size(); i++) {
-      if (Circle::check_collision((*m_objects_ref)[i]))
-			{
+      if (Circle::checkCollision((*m_objects_ref)[i])) {
         if (dynamic_cast<Circle*>((*m_objects_ref)[i])) {
-          sf::Vector2f m_vec = (*m_objects_ref)[i]->getPosition() - getPosition();
-          const sf::Vector2f tangent = {m_vec.y, -m_vec.x};
-          float cos = tangent.x * m_spd_vec.x + tangent.y * m_spd_vec.y / len(m_vec);
+          const sf::Vector2f delta =
+              (*m_objects_ref)[i]->getPosition() - getPosition();
+          const sf::Vector2f tangent = {delta.y, -delta.x};
+          const float cos =
+              tangent.x * m_spd_vec.x + tangent.y * m_spd_vec.y / len(delta);
 
-          sf::Sprite::setPosition(m_last_pos);
-          m_spd_vec = cos*tangent/len(tangent);
-          printf("tangent: %f, %f\n", tangent.x, tangent.y);
-          printf("m_spd_vec: %f, %f\n", m_spd_vec.x, m_spd_vec.y);
+          m_spd_vec = cos * tangent / len(tangent) * 0.01f;
+          snapCollision((*m_objects_ref)[i]);
         } else if (dynamic_cast<Rectangle*>((*m_objects_ref)[i])) {
-          sf::Sprite::setPosition(m_last_pos);
-          m_spd_vec = sf::Vector2f(0.f, 0.f);
+          const sf::Vector2f delta =
+              (*m_objects_ref)[i]->getPosition() - getPosition();
+          if (abs(delta.x) /
+                  static_cast<Rectangle*>((*m_objects_ref)[i])->getSize().x <
+              abs(delta.y) /
+                  static_cast<Rectangle*>((*m_objects_ref)[i])->getSize().y) {
+            m_spd_vec = {0, m_spd_vec.y};
+          } else {
+            m_spd_vec = {m_spd_vec.x, 0};
+          }
+          snapCollision((*m_objects_ref)[i]);
         }
-			}
+      }
     }
 }
 

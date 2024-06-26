@@ -6,7 +6,8 @@ class Object : virtual public sf::Sprite {
  public:
   Object();
   Object(sf::Texture &tex);
-  virtual bool check_collision(Object *obj) const = 0;
+  virtual bool checkCollision(Object *obj) const = 0;
+  virtual void snapCollision(Object *obj) = 0;
   virtual void drawCollision(sf::RenderTarget *target) const = 0;
 
   sf::Vector2f m_spd_vec;
@@ -23,9 +24,14 @@ class Circle : public Object {
   Circle(sf::Texture &tex);
   Circle(sf::Texture &tex, float r) : Object(tex), m_radius(r) {}
 
-  bool check_collision(Object *obj) const override;
-  bool check_collision(Circle *obj) const;
-  bool check_collision(Rectangle *obj) const;
+  bool checkCollision(Object *obj) const override;
+  bool checkCollision(Circle *obj) const;
+  bool checkCollision(Rectangle *obj) const;
+
+  void snapCollision(Object *obj) override;
+  void snapCollision(Circle *obj);
+  void snapCollision(Rectangle *obj);
+
   void drawCollision(sf::RenderTarget *target) const override;
   float getRadius() const { return m_radius; }
 
@@ -38,9 +44,15 @@ class Rectangle : public Object {
   Rectangle() : Object(), m_size(2, 2) {}
   Rectangle(sf::Texture &tex);
   Rectangle(sf::Texture &tex, sf::Vector2f size) : Object(tex), m_size(size) {}
-  bool check_collision(Object *obj) const override;
-  bool check_collision(Rectangle *obj) const;
-  bool check_collision(Circle *obj) const;
+
+  bool checkCollision(Object *obj) const override;
+  bool checkCollision(Rectangle *obj) const;
+  bool checkCollision(Circle *obj) const;
+
+  void snapCollision(Object *obj) override;
+  void snapCollision(Circle *obj);
+  void snapCollision(Rectangle *obj);
+
   void drawCollision(sf::RenderTarget *target) const override;
   const sf::Vector2f getSize() const { return m_size; }
 

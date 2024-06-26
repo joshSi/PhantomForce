@@ -38,7 +38,7 @@ Game::Game(int framerate) : m_input(0) {
   c.setPosition(160, 40);
   m_object_list.push_back(&c);
   m_sprite_layer[1].push_back(&c);
-  Rectangle r = Rectangle(crate_tex, sf::Vector2f(20.f, 20.f));
+  Rectangle r = Rectangle(crate_tex, sf::Vector2f(40.f, 400.f));
   r.setPosition(90, 240);
   m_object_list.push_back(&r);
   m_sprite_layer[1].push_back(&r);
