@@ -36,7 +36,9 @@ target_include_directories(PhantomForce PRIVATE include include/utils)
 target_compile_features(PhantomForce PRIVATE cxx_std_17)
 if (WIN32 AND BUILD_SHARED_LIBS)
   add_custom_command(TARGET PhantomForce POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_RUNTIME_DLLS:PhantomForce> $<TARGET_FILE_DIR:PhantomForce> COMMAND_EXPAND_LISTS)
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:PhantomForce> $<TARGET_FILE_DIR:PhantomForce> COMMAND_EXPAND_LISTS)
+  add_custom_command(TARGET PhantomForce POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${RESOURCE_PATH}/ $<TARGET_FILE_DIR:PhantomForce>/${RESOURCE_PATH}/ COMMAND_EXPAND_LISTS)
 endif()
 
 if (APPLE)
@@ -49,3 +51,4 @@ else()
   install(TARGETS PhantomForce
     RUNTIME DESTINATION bin)
 endif()
+

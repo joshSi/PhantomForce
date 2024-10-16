@@ -26,6 +26,12 @@ brew update
 brew install sfml
 ```
 
+#### Windows
+
+Windows does not need to install sfml as a prerequisite like Linux and MacOS do. Instead, the CMake config will download sfml using the FetchContent module.
+
+https://github.com/joshSi/PhantomForce/blob/532d64e13dc105588dd303b4c299d734e714c68e/CMakeLists.txt#L17-L25
+
 ### CMake
 
 For a single-configuration generator (typically the case on Linux and macOS):
