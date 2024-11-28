@@ -19,6 +19,7 @@ set(
   include/Player.h
   include/TileMap.h
   include/Object.h
+  include/menu/PauseOverlay.h
 )
 set(RESOURCE_PATH assets)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
@@ -46,7 +47,7 @@ else()
   add_executable(PhantomForce ${SOURCES} ${HEADERS} ${RESOURCES})
   target_link_libraries(PhantomForce PRIVATE sfml-graphics)
 endif()
-target_include_directories(PhantomForce PRIVATE include include/utils)
+target_include_directories(PhantomForce PRIVATE include include/utils include/menu)
 
 target_compile_features(PhantomForce PRIVATE cxx_std_17)
 if (WIN32 AND BUILD_SHARED_LIBS)

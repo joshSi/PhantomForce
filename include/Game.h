@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 
 #include "Object.h"
+#include "PauseOverlay.h"
 
 class Game {
  public:
@@ -12,6 +13,7 @@ class Game {
   ~Game();
 
   void pollEvents();
+  void pause();
 
  private:
   sf::Clock m_clock;
@@ -20,6 +22,8 @@ class Game {
   std::vector<sf::Sprite*> m_sprite_layer[4];
   std::vector<Object*> m_object_list;
   uint8_t m_input;
+  bool m_paused = false;
+  PauseOverlay m_pause_overlay;
 };
 
 #endif

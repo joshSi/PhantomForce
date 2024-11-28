@@ -59,6 +59,10 @@ Game::Game(int framerate) : m_input(0) {
   while (m_window->isOpen()) {
     float frame = m_clock.restart().asSeconds() * 60;
 
+    if (m_paused) {
+      pause();
+    }
+
     pollEvents();
 
     sf::Vector2f mouse_pos = m_window->mapPixelToCoords(
@@ -103,30 +107,27 @@ void Game::pollEvents() {
       m_window->close();
     } else if (event.type == sf::Event::KeyPressed) {
       switch (event.key.code) {
-        case sf::Keyboard::A:
-          m_input |= 0b00000010;  // Set bit 1 (left)
-          break;
-        case sf::Keyboard::D:
-          m_input |= 0b00000001;  // Set bit 0 (right)
-          break;
-        case sf::Keyboard::W:
-          m_input |= 0b00001000;  // Set bit 3 (up)
-          break;
-        case sf::Keyboard::S:
-          m_input |= 0b00000100;  // Set bit 2 (down)
-          break;
-        case sf::Keyboard::Space:
-          Object::g_draw_collisions = !Object::g_draw_collisions;
-          break;
-        case sf::Keyboard::Escape:
-          m_window->close();
-          break;
-        default:
-          break;
+      case sf::Keyboard::A:
+        m_input |= 0b00000010;  // Set bit 1 (left)
+        break;
+      case sf::Keyboard::D:
+        m_input |= 0b00000001;  // Set bit 0 (right)
+        break;
+      case sf::Keyboard::W:
+        m_input |= 0b00001000;  // Set bit 3 (up)
+        break;
+      case sf::Keyboard::S:
+        m_input |= 0b00000100;  // Set bit 2 (down)
+        break;
+      case sf::Keyboard::Space:
+        Object::g_draw_collisions = !Object::g_draw_collisions;
+        break;
+      default:
+        break;
       }
     } else if (event.type == sf::Event::KeyReleased) {
       switch (event.key.code) {
-        case sf::Keyboard::A:
+      case sf::Keyboard::A:
           m_input &= ~0b00000010;  // Reset bit 1 (left)
           break;
         case sf::Keyboard::D:
@@ -138,9 +139,26 @@ void Game::pollEvents() {
         case sf::Keyboard::S:
           m_input &= ~0b00000100;  // Reset bit 2 (down)
           break;
+        case sf::Keyboard::Escape:
+          // Pause the game and open the settings overlay
+          m_paused = !m_paused;
         default:
           break;
       }
+    }
+  }
+}
+
+void Game::pause() {
+  if (m_window != nullptr) {
+    m_window->draw(m_pause_overlay);
+    m_window->display();
+  }
+  // Wait for the overlay to be closed
+  while (true) {
+    pollEvents();
+    if (!m_paused) {
+      return;
     }
   }
 }
