@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Check if clang-format is installed
+if ! command -v clang-format &> /dev/null
+then
+    echo "clang-format is not installed. Installing..."
+    if command -v apt-get &> /dev/null; then
+        sudo apt-get install -y clang-format
+    elif command -v brew &> /dev/null; then
+        brew install clang-format
+    elif command -v yum &> /dev/null; then
+        sudo yum install -y clang-format
+    else
+        echo "Package manager not detected. Please install clang-format manually."
+        exit 1
+    fi
+fi
+
+# Find all staged files with C/C++ extensions
+files=$(git diff --cached --name-only --diff-filter=d | grep -E '\.(cpp|hpp|cc|c|h)$')
+
+if [ -z "$files" ]; then
+    echo "No C/C++ files staged for commit."
+    exit 0
+fi
+
+# Format each staged file using clang-format with Google style
+for file in $files
+do
+    echo "Formatting $file with clang-format (Google style)..."
+    clang-format -i --style=Google "$file"
+    git add "$file" # Re-add the file to the staging area after formatting
+done
+
+echo "All files formatted and staged. Proceeding with commit."
+exit 0
