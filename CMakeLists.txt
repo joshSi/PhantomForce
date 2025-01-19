@@ -10,6 +10,8 @@ set(
   src/Player.cpp
   src/TileMap.cpp
   src/Object.cpp
+  src/menu/Button.cpp
+  src/menu/PauseOverlay.cpp
 )
 set(
   HEADERS
@@ -20,6 +22,7 @@ set(
   include/TileMap.h
   include/Object.h
   include/menu/PauseOverlay.h
+  include/menu/Button.h
 )
 set(RESOURCE_PATH assets)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)

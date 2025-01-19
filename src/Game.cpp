@@ -14,6 +14,7 @@ Game::Game(int framerate) : m_input(0) {
 
   sf::Texture tex;
   sf::Texture crate_tex;
+  sf::Font font;
 
   MoveStats def({5.0f, 0.5f, 0.8f, 1.0f});
 
@@ -29,6 +30,11 @@ Game::Game(int framerate) : m_input(0) {
   if (!(crate_tex.loadFromFile(resourcePath + "crate.png"))) {
     printf("Loading texture failed\n");
   }
+
+  if (!font.loadFromFile(resourcePath + "EBB.ttf")) {
+    printf("Loading font failed\n");
+  }
+  m_pause_overlay = PauseOverlay(font);
 
   Player play = Player(tex, &def, 6.f);
   play.setPosition(10, 10);
@@ -107,27 +113,27 @@ void Game::pollEvents() {
       m_window->close();
     } else if (event.type == sf::Event::KeyPressed) {
       switch (event.key.code) {
-      case sf::Keyboard::A:
-        m_input |= 0b00000010;  // Set bit 1 (left)
-        break;
-      case sf::Keyboard::D:
-        m_input |= 0b00000001;  // Set bit 0 (right)
-        break;
-      case sf::Keyboard::W:
-        m_input |= 0b00001000;  // Set bit 3 (up)
-        break;
-      case sf::Keyboard::S:
-        m_input |= 0b00000100;  // Set bit 2 (down)
-        break;
-      case sf::Keyboard::Space:
-        Object::g_draw_collisions = !Object::g_draw_collisions;
-        break;
-      default:
-        break;
+        case sf::Keyboard::A:
+          m_input |= 0b00000010;  // Set bit 1 (left)
+          break;
+        case sf::Keyboard::D:
+          m_input |= 0b00000001;  // Set bit 0 (right)
+          break;
+        case sf::Keyboard::W:
+          m_input |= 0b00001000;  // Set bit 3 (up)
+          break;
+        case sf::Keyboard::S:
+          m_input |= 0b00000100;  // Set bit 2 (down)
+          break;
+        case sf::Keyboard::Space:
+          Object::g_draw_collisions = !Object::g_draw_collisions;
+          break;
+        default:
+          break;
       }
     } else if (event.type == sf::Event::KeyReleased) {
       switch (event.key.code) {
-      case sf::Keyboard::A:
+        case sf::Keyboard::A:
           m_input &= ~0b00000010;  // Reset bit 1 (left)
           break;
         case sf::Keyboard::D:
@@ -155,7 +161,7 @@ void Game::pause() {
     m_window->display();
   }
   // Wait for the overlay to be closed
-  while (true) {
+  while (m_window->isOpen()) {
     pollEvents();
     if (!m_paused) {
       return;
