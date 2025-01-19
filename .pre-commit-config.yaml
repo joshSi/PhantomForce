@@ -1,0 +1,10 @@
+repos:
+- repo: https://github.com/pre-commit/mirrors-clang-format
+  rev: v14.0.6  # Or the latest stable version
+  hooks:
+  - id: clang-format
+    name: clang-format
+    entry: clang-format -i
+    language: system
+    types_or: [c++, c, c#, cuda, java, javascript, json, objective-c, proto]
+    args: ["-style=file"]
