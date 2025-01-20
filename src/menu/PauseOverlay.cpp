@@ -14,11 +14,10 @@ void PauseOverlay::draw(sf::RenderTarget& target,
   target.draw(overlay);
 
   // TODO: Draw settings
-  sf::Text titleText;
+  sf::Text titleText(m_font);
   titleText.setString("Settings");
-  titleText.setFont(m_font);
   titleText.setCharacterSize(8);
-  titleText.setPosition(20, 20);
+  titleText.setPosition(sf::Vector2f(20, 20));
 
   target.draw(titleText, states);
   Button settingsButton(sf::Vector2f(100, 50), sf::Vector2f(20, 20), "Settings",

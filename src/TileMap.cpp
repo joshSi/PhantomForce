@@ -21,7 +21,7 @@ void TileMap::loadMap(const int* tiles, unsigned int mapWidth,
   m_chunkSize =
       sf::Vector2u(chunk.x / m_tileSize.x + 1, chunk.y / m_tileSize.y + 1);
 
-  m_vertices.setPrimitiveType(sf::Quads);
+  m_vertices.setPrimitiveType(sf::PrimitiveType::Triangles);
   m_vertices.resize(m_chunkSize.x * m_chunkSize.y * 4);
   m_center = view.getCenter();
 }
