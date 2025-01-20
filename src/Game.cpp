@@ -9,7 +9,7 @@
 
 Game::Game(int framerate) : m_input(0) {
   const std::string resourcePath = getResourcePath();
-  m_window = new sf::RenderWindow{{1000u, 800u}, "Phantom Force"};
+  m_window = new sf::RenderWindow(sf::VideoMode({1000, 800}), "Phantom Force");
   m_window->setFramerateLimit(framerate);
 
   sf::Texture tex;
@@ -31,35 +31,35 @@ Game::Game(int framerate) : m_input(0) {
     printf("Loading texture failed\n");
   }
 
-  if (!font.loadFromFile(resourcePath + "EBB.ttf")) {
+  if (!font.openFromFile(resourcePath + "EBB.ttf")) {
     printf("Loading font failed\n");
   }
   m_pause_overlay = PauseOverlay(font);
 
   Player play = Player(tex, &def, 6.f);
-  play.setPosition(10, 10);
+  play.setPosition(sf::Vector2f(10, 10));
   m_sprite_layer[1].push_back(&play);
   play.setObjects(&m_object_list);
   Circle c = Circle(tex, 20.f);
-  c.setPosition(160, 40);
+  c.setPosition(sf::Vector2f(160, 40));
   m_object_list.push_back(&c);
   m_sprite_layer[1].push_back(&c);
   Rectangle r = Rectangle(crate_tex, sf::Vector2f(40.f, 400.f));
-  r.setPosition(90, 240);
+  r.setPosition(sf::Vector2f(90, 240));
   m_object_list.push_back(&r);
   m_sprite_layer[1].push_back(&r);
 
   TileMap background_map;
-  int* p = new int[10000];
-  for (int i = 0; i < 10000; i++) p[i] = i % 4;
-  p[101] = 15;
-  p[102] = 16;
-  p[203] = 15;
-  p[302] = 15;
+  m_p = new int[10000];
+  for (int i = 0; i < 10000; i++) m_p[i] = i % 4;
+  m_p[101] = 15;
+  m_p[102] = 16;
+  m_p[203] = 15;
+  m_p[302] = 15;
   if (!background_map.loadTileset(resourcePath + "background.png",
                                   sf::Vector2u(32, 32)))
     printf("Loading tileset failed\n");
-  background_map.loadMap(p, 100, 100, view);
+  background_map.loadMap(m_p, 100, 100, view);
   background_map.flash(sf::Vector2i(0, 0));
 
   while (m_window->isOpen()) {
@@ -86,7 +86,7 @@ Game::Game(int framerate) : m_input(0) {
     background_map.loadVertexChunk(v_center);
 
     play.move(sf::Vector2f(3, 3), frame, false, m_input);
-    play.setRotation(play_dir);
+    play.setRotation(sf::degrees(play_dir));
     m_window->draw(background_map);
 
     if (Object::g_draw_collisions) {
@@ -101,51 +101,56 @@ Game::Game(int framerate) : m_input(0) {
       }
     }
     m_window->display();
+    printf("FPS: %f\n", 1.0f / frame);
   }
 }
 
-Game::~Game() { delete m_window; }
+Game::~Game() {
+  delete m_window;
+  delete[] m_p;
+}
 
 void Game::pollEvents() {
-  sf::Event event;
-  while (m_window->pollEvent(event)) {
-    if (event.type == sf::Event::Closed) {
+  while (const std::optional event = m_window->pollEvent()) {
+    if (event->is<sf::Event::Closed>()) {
       m_window->close();
-    } else if (event.type == sf::Event::KeyPressed) {
-      switch (event.key.code) {
-        case sf::Keyboard::A:
+    } else if (const sf::Event::KeyPressed* keyPressed =
+                   event->getIf<sf::Event::KeyPressed>()) {
+      switch (keyPressed->scancode) {
+        case sf::Keyboard::Scancode::A:
           m_input |= 0b00000010;  // Set bit 1 (left)
           break;
-        case sf::Keyboard::D:
+        case sf::Keyboard::Scancode::D:
           m_input |= 0b00000001;  // Set bit 0 (right)
           break;
-        case sf::Keyboard::W:
+        case sf::Keyboard::Scancode::W:
           m_input |= 0b00001000;  // Set bit 3 (up)
           break;
-        case sf::Keyboard::S:
+        case sf::Keyboard::Scancode::S:
           m_input |= 0b00000100;  // Set bit 2 (down)
           break;
-        case sf::Keyboard::Space:
+        case sf::Keyboard::Scancode::Space:
           Object::g_draw_collisions = !Object::g_draw_collisions;
           break;
         default:
           break;
       }
-    } else if (event.type == sf::Event::KeyReleased) {
-      switch (event.key.code) {
-        case sf::Keyboard::A:
+    } else if (const sf::Event::KeyReleased* keyReleased =
+                   event->getIf<sf::Event::KeyReleased>()) {
+      switch (keyReleased->scancode) {
+        case sf::Keyboard::Scancode::A:
           m_input &= ~0b00000010;  // Reset bit 1 (left)
           break;
-        case sf::Keyboard::D:
+        case sf::Keyboard::Scancode::D:
           m_input &= ~0b00000001;  // Reset bit 0 (right)
           break;
-        case sf::Keyboard::W:
+        case sf::Keyboard::Scancode::W:
           m_input &= ~0b00001000;  // Reset bit 3 (up)
           break;
-        case sf::Keyboard::S:
+        case sf::Keyboard::Scancode::S:
           m_input &= ~0b00000100;  // Reset bit 2 (down)
           break;
-        case sf::Keyboard::Escape:
+        case sf::Keyboard::Scancode::Escape:
           // Pause the game and open the settings overlay
           m_paused = !m_paused;
         default:

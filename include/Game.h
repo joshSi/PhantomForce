@@ -16,6 +16,7 @@ class Game {
   void pause();
 
  private:
+  int* m_p;  // Pointer to dynamically allocated array for tile map data
   sf::Clock m_clock;
   sf::RenderWindow* m_window;
   // Up to 4 drawing layers

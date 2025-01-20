@@ -1,2 +1,7 @@
 #include "Game.h"
-int main() { Game g = Game(60); }
+int main() {
+  printf("Starting Phantom Force\n");
+  Game g = Game(60);
+  printf("Game initialized\n");
+  return 0;
+}

@@ -6,10 +6,16 @@ enum class ButtonState { NORMAL, HOVER, PRESSED };
 
 class Button : public sf::RectangleShape {
  public:
-  Button() : sf::RectangleShape() { setText(); }
-  Button(const sf::Vector2f& size) : sf::RectangleShape(size) { setText(); }
-  Button(const sf::Vector2f& size, const sf::Vector2f& position)
-      : sf::RectangleShape(size) {
+  Button(const sf::Text text) : sf::RectangleShape(), m_buttonText(text) {
+    setText();
+  }
+  Button(const sf::Text text, const sf::Vector2f& size)
+      : sf::RectangleShape(size), m_buttonText(text) {
+    setText();
+  }
+  Button(const sf::Text text, const sf::Vector2f& size,
+         const sf::Vector2f& position)
+      : sf::RectangleShape(size), m_buttonText(text) {
     setPosition(position);
     setText();
   }
@@ -21,8 +27,8 @@ class Button : public sf::RectangleShape {
   bool isMouseOver(const sf::RenderWindow& window) const;
 
  private:
-  sf::RectangleShape buttonShape;
-  sf::Text buttonText;
+  sf::RectangleShape m_buttonShape;
+  sf::Text m_buttonText;
   ButtonState state = ButtonState::NORMAL;
   virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
   void setText();
