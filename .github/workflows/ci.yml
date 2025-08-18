@@ -28,7 +28,7 @@ jobs:
 
     - name: Install MacOS Dependencies
       if: runner.os == 'macOS'
-      run: brew install sfml@2.6.1
+      run: brew install sfml@2
 
     - name: Checkout
       uses: actions/checkout@v3
