@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -25,7 +28,7 @@ jobs:
 
     - name: Install MacOS Dependencies
       if: runner.os == 'macOS'
-      run: brew install sfml
+      run: brew install sfml@2.6.1
 
     - name: Checkout
       uses: actions/checkout@v3

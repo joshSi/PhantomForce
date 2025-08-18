@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(PhantomForce LANGUAGES CXX)
 
-find_package(SFML 2.5.1 COMPONENTS graphics window system)
+find_package(SFML 2.6.1 COMPONENTS graphics window system)
 
 set(SOURCES src/Main.cpp src/Game.cpp src/Player.cpp src/TileMap.cpp src/Object.cpp)
 set(HEADERS include/utils/utils.h include/utils/platform_utils.h include/Game.h include/Player.h include/TileMap.h include/Object.h)
