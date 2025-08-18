@@ -3,7 +3,7 @@
 #include "utils.h"
 
 Player::Player(sf::Texture& tex, MoveStats* s, float r)
-    : Circle(tex, r), sf::Sprite(tex), m_stat(s) {}
+    : Circle(tex, r), m_stat(s) {}
 
 void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input) {
   sf::Vector2f v(

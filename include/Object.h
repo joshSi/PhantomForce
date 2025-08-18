@@ -20,9 +20,9 @@ class Rectangle;
 
 class Circle : public Object {
  public:
-  Circle();
+  Circle() : Object(), m_radius(1) {}
   Circle(sf::Texture &tex);
-  Circle(sf::Texture &tex, float r);
+  Circle(sf::Texture &tex, float r) : Object(tex), m_radius(r) {}
 
   bool checkCollision(Object *obj) const override;
   bool checkCollision(Circle *obj) const;
@@ -41,9 +41,9 @@ class Circle : public Object {
 
 class Rectangle : public Object {
  public:
-  Rectangle();
+  Rectangle() : Object(), m_size(2, 2) {}
   Rectangle(sf::Texture &tex);
-  Rectangle(sf::Texture &tex, sf::Vector2f size);
+  Rectangle(sf::Texture &tex, sf::Vector2f size) : Object(tex), m_size(size) {}
 
   bool checkCollision(Object *obj) const override;
   bool checkCollision(Rectangle *obj) const;

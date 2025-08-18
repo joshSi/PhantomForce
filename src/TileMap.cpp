@@ -21,8 +21,8 @@ void TileMap::loadMap(const int* tiles, unsigned int mapWidth,
   m_chunkSize =
       sf::Vector2u(chunk.x / m_tileSize.x + 1, chunk.y / m_tileSize.y + 1);
 
-  m_vertices.setPrimitiveType(sf::PrimitiveType::Triangles);
-  m_vertices.resize(m_chunkSize.x * m_chunkSize.y * 6);
+  m_vertices.setPrimitiveType(sf::Quads);
+  m_vertices.resize(m_chunkSize.x * m_chunkSize.y * 4);
   m_center = view.getCenter();
 }
 
@@ -51,10 +51,10 @@ void TileMap::loadVertexChunk(sf::Vector2f view_coord) {
 
 void TileMap::flash(sf::Vector2i t) {
   // Populate the vertex array, with one quad per tile
-  unsigned int chunkWidth = std::min(m_chunkSize.x + t.x, m_mapSize.x);
-  unsigned int chunkHeight = std::min(m_chunkSize.y + t.y, m_mapSize.y);
-  for (unsigned int i = t.x; i < chunkWidth; i++) {
-    for (unsigned int j = t.y; j < chunkHeight; j++) {
+  for (unsigned int i = t.x; i < std::min(m_chunkSize.x + t.x, m_mapSize.x);
+       i++) {
+    for (unsigned int j = t.y; j < std::min(m_chunkSize.y + t.y, m_mapSize.y);
+         j++) {
       // Get the current tile number
       int tileNumber = m_tiles[i + j * m_mapSize.x];
 
@@ -62,41 +62,24 @@ void TileMap::flash(sf::Vector2i t) {
       int tu = tileNumber % (m_tileset.getSize().x / m_tileSize.x);
       int tv = tileNumber / (m_tileset.getSize().x / m_tileSize.x);
 
-      // Get a pointer to the current tile's quad, which is a group of 6
-      // vertices (2 triangles)
-      sf::Vertex* quad = &m_vertices[(i - t.x + (j - t.y) * m_chunkSize.x) * 6];
+      // Get a pointer to the current tile's quad
+      sf::Vertex* quad = &m_vertices[(i - t.x + (j - t.y) * m_chunkSize.x) * 4];
 
-      // Top-left triangle
-      quad[0].position =
-          sf::Vector2f(i * m_tileSize.x, j * m_tileSize.y);  // i, j
-      quad[1].position =
-          sf::Vector2f((i + 1) * m_tileSize.x, j * m_tileSize.y);  // i+1, j
+      // Define corners
+      quad[0].position = sf::Vector2f(i * m_tileSize.x, j * m_tileSize.y);
+      quad[1].position = sf::Vector2f((i + 1) * m_tileSize.x, j * m_tileSize.y);
       quad[2].position =
-          sf::Vector2f(i * m_tileSize.x, (j + 1) * m_tileSize.y);  // i, j+1
+          sf::Vector2f((i + 1) * m_tileSize.x, (j + 1) * m_tileSize.y);
+      quad[3].position = sf::Vector2f(i * m_tileSize.x, (j + 1) * m_tileSize.y);
 
       // Define texture coordinates
-      quad[0].texCoords =
-          sf::Vector2f(tu * m_tileSize.x, tv * m_tileSize.y);  // tu, tv
+      quad[0].texCoords = sf::Vector2f(tu * m_tileSize.x, tv * m_tileSize.y);
       quad[1].texCoords =
-          sf::Vector2f((tu + 1) * m_tileSize.x, tv * m_tileSize.y);  // tu+1, tv
+          sf::Vector2f((tu + 1) * m_tileSize.x, tv * m_tileSize.y);
       quad[2].texCoords =
-          sf::Vector2f(tu * m_tileSize.x, (tv + 1) * m_tileSize.y);  // tu, tv+1
-
-      // Bottom-right triangle
-      quad[3].position =
-          sf::Vector2f((i + 1) * m_tileSize.x, j * m_tileSize.y);  // i+1, j
-      quad[4].position = sf::Vector2f((i + 1) * m_tileSize.x,
-                                      (j + 1) * m_tileSize.y);  // i+1, j+1
-      quad[5].position =
-          (sf::Vector2f(i * m_tileSize.x, (j + 1) * m_tileSize.y));  // i, j+1
-
-      // Define texture coordinates
+          sf::Vector2f((tu + 1) * m_tileSize.x, (tv + 1) * m_tileSize.y);
       quad[3].texCoords =
-          sf::Vector2f((tu + 1) * m_tileSize.x, tv * m_tileSize.y);  // tu+1, tv
-      quad[4].texCoords = sf::Vector2f((tu + 1) * m_tileSize.x,
-                                       (tv + 1) * m_tileSize.y);  // tu+1, tv+1
-      quad[5].texCoords =
-          sf::Vector2f(tu * m_tileSize.x, (tv + 1) * m_tileSize.y);  // tu, tv+1
+          sf::Vector2f(tu * m_tileSize.x, (tv + 1) * m_tileSize.y);
     }
   }
 }
