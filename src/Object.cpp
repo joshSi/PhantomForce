@@ -3,35 +3,43 @@
 #include "utils.h"
 
 bool Object::g_draw_collisions = false;
+const sf::Texture null_texture;
 
-Object::Object() : m_mass(0) {
+Object::Object() : sf::Sprite(null_texture), m_mass(0) {
   sf::Vector2f object_size =
-      sf::Vector2f(getLocalBounds().width, getLocalBounds().height);
-  setOrigin(object_size.x / 2, object_size.y / 2);
+      sf::Vector2f(getLocalBounds().size.x, getLocalBounds().size.y);
+  setOrigin(sf::Vector2f(object_size.x / 2, object_size.y / 2));
 };
 
-Object::Object(sf::Texture &tex) : m_mass(0) {
-  setTexture(tex);
+Object::Object(sf::Texture &tex) : sf::Sprite(tex), m_mass(0) {
   sf::Vector2f object_size =
-      sf::Vector2f(getLocalBounds().width, getLocalBounds().height);
-  setOrigin(object_size.x / 2, object_size.y / 2);
+      sf::Vector2f(getLocalBounds().size.x, getLocalBounds().size.y);
+  setOrigin(sf::Vector2f(object_size.x / 2, object_size.y / 2));
 };
 
-Circle::Circle(sf::Texture &tex) {
-  setTexture(tex);
+Circle::Circle() : sf::Sprite(null_texture), m_radius(1) {}
+
+Circle::Circle(sf::Texture &tex) : sf::Sprite(tex), m_radius(1) {
   sf::Vector2f object_size =
-      sf::Vector2f(getLocalBounds().width, getLocalBounds().height);
-  setOrigin(object_size.x / 2, object_size.y / 2);
+      sf::Vector2f(getLocalBounds().size.x, getLocalBounds().size.y);
+  setOrigin(sf::Vector2f(object_size.x / 2, object_size.y / 2));
   m_radius = object_size.x / 2;
 }
 
-Rectangle::Rectangle(sf::Texture &tex) {
+Circle::Circle(sf::Texture &tex, float r) : sf::Sprite(tex), m_radius(r) {}
+
+Rectangle::Rectangle() : sf::Sprite(null_texture), m_size(2, 2) {}
+
+Rectangle::Rectangle(sf::Texture &tex) : sf::Sprite(tex) {
   setTexture(tex);
   sf::Vector2f object_size =
-      sf::Vector2f(getLocalBounds().width, getLocalBounds().height);
-  setOrigin(object_size.x / 2, object_size.y / 2);
+      sf::Vector2f(getLocalBounds().size.x, getLocalBounds().size.y);
+  setOrigin(sf::Vector2f(object_size.x / 2, object_size.y / 2));
   m_size = object_size;
 }
+
+Rectangle::Rectangle(sf::Texture &tex, sf::Vector2f size)
+    : Object(tex), sf::Sprite(tex), m_size(size) {}
 
 bool Circle::checkCollision(Object *obj) const {
   if (dynamic_cast<Circle *>(obj)) {
@@ -107,23 +115,23 @@ void Circle::snapCollision(Rectangle *obj) {
   sf::Vector2f delta = obj->getPosition() - getPosition();
   if (abs(delta.x) / obj->getSize().x < abs(delta.y) / obj->getSize().y) {
     if (delta.y < 0) {
-      return setPosition(
+      return setPosition(sf::Vector2f(
           getPosition().x,
-          obj->getPosition().y + obj->getSize().y / 2 + m_radius + 0.01f);
+          obj->getPosition().y + obj->getSize().y / 2 + m_radius + 0.01f));
     } else {
-      return setPosition(
+      return setPosition(sf::Vector2f(
           getPosition().x,
-          obj->getPosition().y - obj->getSize().y / 2 - m_radius - 0.01f);
+          obj->getPosition().y - obj->getSize().y / 2 - m_radius - 0.01f));
     }
   } else {
     if (delta.x < 0) {
-      return setPosition(
+      return setPosition(sf::Vector2f(
           obj->getPosition().x + obj->getSize().x / 2 + m_radius + 0.01f,
-          getPosition().y);
+          getPosition().y));
     } else {
-      return setPosition(
+      return setPosition(sf::Vector2f(
           obj->getPosition().x - obj->getSize().x / 2 - m_radius - 0.01f,
-          getPosition().y);
+          getPosition().y));
     }
   }
 }
@@ -143,37 +151,37 @@ void Rectangle::snapCollision(Rectangle *obj) {
   if (abs(delta.x) / (obj->getSize().x + getSize().x) <
       abs(delta.y) / (obj->getSize().y + getSize().y)) {
     if (delta.y < 0) {
-      return setPosition(getPosition().x, obj->getPosition().y +
-                                              obj->getSize().y / 2 +
-                                              getSize().y / 2 + 0.01f);
+      return setPosition(sf::Vector2f(
+          getPosition().x, obj->getPosition().y + obj->getSize().y / 2 +
+                               getSize().y / 2 + 0.01f));
     } else {
-      return setPosition(getPosition().x, obj->getPosition().y -
-                                              obj->getSize().y / 2 -
-                                              getSize().y / 2 - 0.01f);
+      return setPosition(sf::Vector2f(
+          getPosition().x, obj->getPosition().y - obj->getSize().y / 2 -
+                               getSize().y / 2 - 0.01f));
     }
   } else {
     if (delta.x < 0) {
-      return setPosition(
+      return setPosition(sf::Vector2f(
           obj->getPosition().x + obj->getSize().x / 2 + getSize().x / 2 + 0.01f,
-          getPosition().y);
+          getPosition().y));
     } else {
-      return setPosition(
+      return setPosition(sf::Vector2f(
           obj->getPosition().x - obj->getSize().x / 2 - getSize().x / 2 - 0.01f,
-          getPosition().y);
+          getPosition().y));
     }
   }
 }
 
 void Circle::drawCollision(sf::RenderTarget *target) const {
   sf::CircleShape circle(m_radius);
-  circle.setOrigin(circle.getRadius(), circle.getRadius());
+  circle.setOrigin(sf::Vector2f(circle.getRadius(), circle.getRadius()));
   circle.setPosition(getPosition());
   target->draw(circle);
 }
 
 void Rectangle::drawCollision(sf::RenderTarget *target) const {
   sf::RectangleShape rect(sf::Vector2f(m_size.x, m_size.y));
-  rect.setOrigin(m_size.x / 2, m_size.y / 2);
+  rect.setOrigin(sf::Vector2f(m_size.x / 2, m_size.y / 2));
   rect.setPosition(getPosition());
   target->draw(rect);
 }

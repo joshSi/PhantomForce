@@ -4,3 +4,5 @@ out
 .idea
 .vs
 .vscode
+.DS_Store
+venv/
