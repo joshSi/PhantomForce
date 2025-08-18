@@ -51,10 +51,10 @@ void TileMap::loadVertexChunk(sf::Vector2f view_coord) {
 
 void TileMap::flash(sf::Vector2i t) {
   // Populate the vertex array, with one quad per tile
-  for (unsigned int i = t.x; i < std::min(m_chunkSize.x + t.x, m_mapSize.x);
-       i++) {
-    for (unsigned int j = t.y; j < std::min(m_chunkSize.y + t.y, m_mapSize.y);
-         j++) {
+  unsigned int chunkWidth = std::min(m_chunkSize.x + t.x, m_mapSize.x);
+  unsigned int chunkHeight = std::min(m_chunkSize.y + t.y, m_mapSize.y);
+  for (unsigned int i = t.x; i < chunkWidth; i++) {
+    for (unsigned int j = t.y; j < chunkHeight; j++) {
       // Get the current tile number
       int tileNumber = m_tiles[i + j * m_mapSize.x];
 
