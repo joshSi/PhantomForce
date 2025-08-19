@@ -3,17 +3,6 @@ project(PhantomForce LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(SFML 3.0.0 REQUIRED COMPONENTS Graphics Window System)
-if(NOT SFML_FOUND)
-  message("SFML not found, downloading...")
-  include(FetchContent)
-  FetchContent_Declare(SFML
-    GIT_REPOSITORY https://github.com/SFML/SFML.git
-    GIT_TAG 3.0.x
-  )
-  FetchContent_MakeAvailable(SFML)
-endif()
-
 set(
   SOURCES
   src/main.cpp
@@ -38,6 +27,18 @@ set(
 set(RESOURCE_PATH assets)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR}/install)
 file(GLOB_RECURSE RESOURCES "${RESOURCE_PATH}/*")
+
+find_package(SFML 3.0.1 COMPONENTS Graphics System QUIET)
+if(NOT SFML_FOUND)
+  include(FetchContent)
+  FetchContent_Declare(SFML
+      GIT_REPOSITORY https://github.com/SFML/SFML.git
+      GIT_TAG 3.0.1
+      GIT_SHALLOW ON
+      EXCLUDE_FROM_ALL
+      SYSTEM)
+  FetchContent_MakeAvailable(SFML)
+endif()
 
 if (APPLE)
   set_source_files_properties(${RESOURCES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
@@ -72,4 +73,3 @@ else()
   install(TARGETS PhantomForce
     RUNTIME DESTINATION bin)
 endif()
-
