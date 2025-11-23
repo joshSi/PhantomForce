@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(PhantomForce LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(
@@ -11,7 +11,7 @@ set(
   src/TileMap.cpp
   src/Object.cpp
   src/menu/Button.cpp
-  src/menu/PauseOverlay.cpp
+  # src/menu/PauseOverlay.cpp
 )
 set(
   HEADERS
@@ -21,7 +21,7 @@ set(
   include/Player.h
   include/TileMap.h
   include/Object.h
-  include/menu/PauseOverlay.h
+  # include/menu/PauseOverlay.h
   include/menu/Button.h
 )
 set(RESOURCE_PATH assets)
@@ -42,34 +42,41 @@ endif()
 
 if (APPLE)
   set_source_files_properties(${RESOURCES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-  add_executable(PhantomForce MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${RESOURCES})
-  target_link_libraries(PhantomForce PRIVATE SFML::Graphics "-framework CoreFoundation")
+  add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${RESOURCES})
+  target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics "-framework CoreFoundation")
 elseif(WIN32)
   file(COPY ${RESOURCE_PATH} DESTINATION ${CMAKE_BINARY_DIR})
-  add_executable(PhantomForce ${SOURCES} ${HEADERS})
-  target_link_libraries(PhantomForce PRIVATE SFML::Graphics)
+  add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+  target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics)
 else()
   file(COPY ${RESOURCE_PATH} DESTINATION ${CMAKE_BINARY_DIR})
-  add_executable(PhantomForce ${SOURCES} ${HEADERS} ${RESOURCES})
-  target_link_libraries(PhantomForce PRIVATE SFML::Graphics)
+  add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
+  target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics)
 endif()
-target_include_directories(PhantomForce PRIVATE include include/utils include/menu)
+target_include_directories(${PROJECT_NAME} PRIVATE include include/utils include/menu)
 
-target_compile_features(PhantomForce PRIVATE cxx_std_17)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 if (WIN32 AND BUILD_SHARED_LIBS)
-  add_custom_command(TARGET PhantomForce POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:PhantomForce> $<TARGET_FILE_DIR:PhantomForce> COMMAND_EXPAND_LISTS)
-  add_custom_command(TARGET PhantomForce POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${RESOURCE_PATH}/ $<TARGET_FILE_DIR:PhantomForce>/${RESOURCE_PATH}/ COMMAND_EXPAND_LISTS)
+  add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}> COMMAND_EXPAND_LISTS)
+  add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${RESOURCE_PATH}/ $<TARGET_FILE_DIR:${PROJECT_NAME}>/${RESOURCE_PATH}/ COMMAND_EXPAND_LISTS)
 endif()
 
 if (APPLE)
-  install(TARGETS PhantomForce
+  install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .
     RUNTIME DESTINATION bin)
 elseif(WIN32)
-  install(TARGETS PhantomForce)
+  install(TARGETS ${PROJECT_NAME})
 else()
-  install(TARGETS PhantomForce
+  install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin)
+endif()
+
+install(DIRECTORY ${RESOURCE_PATH}/ DESTINATION ${RESOURCE_PATH})
+if (APPLE)
+  install(DIRECTORY ${CMAKE_BINARY_DIR}/${PROJECT_NAME}.app/Contents/Resources/ DESTINATION Resources)
+else()
+  install(DIRECTORY ${RESOURCE_PATH}/ DESTINATION ${CMAKE_INSTALL_PREFIX}/${RESOURCE_PATH})
 endif()
