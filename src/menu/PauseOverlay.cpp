@@ -2,7 +2,12 @@
 
 PauseOverlay::PauseOverlay() {}
 
-PauseOverlay::PauseOverlay(const sf::Font font) : m_font(font) {}
+PauseOverlay::PauseOverlay(const sf::Font font) : m_font(font) {
+  settingsButton =
+      Button(sf::Vector2f(100, 50), sf::Vector2f(20, 20), "Settings", m_font);
+}
+
+PauseOverlay::~PauseOverlay() { printf("PauseOverlay destroyed\n"); }
 
 void PauseOverlay::draw(sf::RenderTarget& target,
                         sf::RenderStates states) const {
@@ -15,12 +20,10 @@ void PauseOverlay::draw(sf::RenderTarget& target,
 
   // TODO: Draw settings
   sf::Text titleText(m_font);
-  titleText.setString("Settings");
+  titleText.setString("Settings 1");
   titleText.setCharacterSize(8);
   titleText.setPosition(sf::Vector2f(20, 20));
 
   target.draw(titleText, states);
-  Button settingsButton(sf::Vector2f(100, 50), sf::Vector2f(20, 20), "Settings",
-                        m_font);
   target.draw(settingsButton, states);
 }

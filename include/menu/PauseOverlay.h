@@ -9,6 +9,10 @@ class PauseOverlay : public sf::Drawable {
   PauseOverlay();
   PauseOverlay(const sf::Font font);
 
+  ~PauseOverlay();
+
+  Button settingsButton;
+
  private:
   sf::Font m_font;
 
