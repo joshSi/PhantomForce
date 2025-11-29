@@ -21,7 +21,6 @@ set(
   include/Player.h
   include/TileMap.h
   include/Object.h
-  # include/menu/PauseOverlay.h
   include/menu/Button.h
 )
 set(RESOURCE_PATH assets)
@@ -53,7 +52,7 @@ else()
   add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
   target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics)
 endif()
-target_include_directories(${PROJECT_NAME} PRIVATE include include/utils include/menu)
+target_include_directories(${PROJECT_NAME} PRIVATE include include/utils include/menu include/assets)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 if (WIN32 AND BUILD_SHARED_LIBS)

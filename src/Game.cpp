@@ -4,7 +4,9 @@
 
 #include "Player.h"
 #include "TileMap.h"
+#include "crate_img.h"
 #include "platform_utils.h"
+#include "player_img.h"
 #include "utils.h"
 
 int runGame(int framerate = 60) {
@@ -33,10 +35,10 @@ int runGame(int framerate = 60) {
   view.zoom(0.25f);
   m_window.setView(view);
 
-  if (!(tex.loadFromFile(resourcePath + "player.png"))) {
+  if (!(tex.loadFromMemory(player_img, player_img_len))) {
     printf("Loading texture failed\n");
   }
-  if (!(crate_tex.loadFromFile(resourcePath + "crate.png"))) {
+  if (!(crate_tex.loadFromMemory(crate_img, crate_img_len))) {
     printf("Loading texture failed\n");
   }
   if (!font.openFromFile(resourcePath + "EBB.ttf")) {
