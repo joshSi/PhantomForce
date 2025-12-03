@@ -10,6 +10,7 @@
 #include "utils.h"
 
 int runGame(int framerate = 60) {
+  const float VIEW_SCALE = 0.25f;
   GameState game_state = GameState::Menu;
   int* m_p;  // Pointer to dynamically allocated array for tile map data
   sf::Clock m_clock;
@@ -32,7 +33,7 @@ int runGame(int framerate = 60) {
   // Viewport of 250 x 200, 1/4 of the original window 1000 x 800
   sf::View view = m_window.getView();
   sf::Vector2f minCenter = sf::Vector2f(125.f, 100.f);
-  view.zoom(0.25f);
+  view.zoom(VIEW_SCALE);
   m_window.setView(view);
 
   if (!(tex.loadFromMemory(player_img, player_img_len))) {
@@ -115,8 +116,10 @@ int runGame(int framerate = 60) {
             m_input &= ~0b00000100;  // Reset bit 2 (down)
             break;
           [[unlikely]] case sf::Keyboard::Scancode::Escape:
-            game_state = game_state == GameState::Playing ? GameState::Paused
-                                                          : GameState::Playing;
+            if (game_state == GameState::Paused)
+              game_state = GameState::Playing;
+            else if (game_state == GameState::Playing)
+              game_state = GameState::Paused;
             break;
           default:
             break;
@@ -132,7 +135,9 @@ int runGame(int framerate = 60) {
     // Game state
     if (game_state == GameState::Paused) {
       m_window.clear(sf::Color(50, 50, 50));
-      sf::Text pausedText(font, "Game Paused", 50);
+
+      sf::Text pausedText(font, "Game Paused", 30);
+      pausedText.setScale(sf::Vector2f(VIEW_SCALE, VIEW_SCALE));
       pausedText.setFillColor(sf::Color::White);
       pausedText.setPosition(
           sf::Vector2f(m_window.getView().getCenter().x -
@@ -141,6 +146,27 @@ int runGame(int framerate = 60) {
                            pausedText.getGlobalBounds().size.y / 2));
       m_window.draw(pausedText);
     } else if (game_state == GameState::Menu) {
+      m_window.clear(sf::Color(50, 50, 50));
+      sf::Text menuText(font, "Main Menu", 50);
+      menuText.setScale(sf::Vector2f(VIEW_SCALE, VIEW_SCALE));
+      menuText.setFillColor(sf::Color::White);
+      menuText.setPosition(
+          sf::Vector2f(m_window.getView().getCenter().x -
+                           menuText.getGlobalBounds().size.x / 2,
+                       m_window.getView().getCenter().y -
+                           menuText.getGlobalBounds().size.y * 1.75f));
+      m_window.draw(menuText);
+
+      Button startButton(sf::Vector2f(100.f, 25.f),
+                         sf::Vector2f(m_window.getView().getCenter().x - 50.f,
+                                      m_window.getView().getCenter().y + 20.f),
+                         "Start Game", font, 10);
+      startButton.setScale(sf::Vector2f(VIEW_SCALE * 2, VIEW_SCALE * 2));
+      if (startButton.isMouseOver(m_window) &&
+          sf::Mouse::isButtonPressed(sf::Mouse::Button::Left)) {
+        game_state = GameState::Playing;
+      }
+      m_window.draw(startButton);
     } else if (game_state == GameState::Playing) [[likely]] {
       sf::Vector2f mouse_pos = m_window.mapPixelToCoords(
           sf::Mouse::getPosition(m_window), m_window.getView());
@@ -187,7 +213,6 @@ int runGame(int framerate = 60) {
     layer.clear();
   }
   m_object_list.clear();
-  printf("Game closed\n");
 
   return 0;
 }

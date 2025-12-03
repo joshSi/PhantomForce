@@ -17,9 +17,10 @@ class Button : public sf::RectangleShape {
   bool isMouseOver(const sf::RenderWindow& window) const;
 
   void setState(ButtonState state) { this->state = state; }
+  void setScale(sf::Vector2f scale);
+  void setPosition(const sf::Vector2f& position);
 
  private:
-  sf::RectangleShape m_buttonShape;
   sf::Text* m_buttonText;
   ButtonState state = ButtonState::NORMAL;
   virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
