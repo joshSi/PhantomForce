@@ -43,6 +43,21 @@ if (APPLE)
   set_source_files_properties(${RESOURCES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
   add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${RESOURCES})
   target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics "-framework CoreFoundation")
+
+   # Set variables for Info.plist
+  set(MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME})  # Short name
+  set(MACOSX_BUNDLE_GUI_IDENTIFIER "com.jsi.${PROJECT_NAME}")
+  set(MACOSX_BUNDLE_BUNDLE_VERSION "1.0")
+  set(MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0")
+
+  # Generate the Info.plist file
+  configure_file(${CMAKE_SOURCE_DIR}/Info.plist.in ${CMAKE_BINARY_DIR}/Info.plist @ONLY)
+  set_target_properties(${PROJECT_NAME} PROPERTIES
+    MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_BINARY_DIR}/Info.plist
+    INSTALL_RPATH "@executable_path/../Frameworks"
+    BUILD_WITH_INSTALL_RPATH TRUE
+  )
 elseif(WIN32)
   file(COPY ${RESOURCE_PATH} DESTINATION ${CMAKE_BINARY_DIR})
   add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
