@@ -6,7 +6,7 @@ Button::Button() {
   setSize(sf::Vector2f(100, 50));
   sf::RectangleShape::setPosition(sf::Vector2f(0, 0));
   setFillColor(sf::Color(200, 200, 200));
-  setOutlineColor(sf::Color::Black);
+  setOutlineColor(sf::Color(220, 220, 220));
   setOutlineThickness(1.0f);
 }
 
@@ -16,7 +16,7 @@ Button::Button(const sf::Vector2f& size, const sf::Vector2f& position,
     : sf::RectangleShape(size) {
   sf::RectangleShape::setPosition(position);
   setFillColor(sf::Color(200, 200, 200));
-  setOutlineColor(sf::Color::Black);
+  setOutlineColor(sf::Color(220, 220, 220));
   setOutlineThickness(1.0f);
   m_buttonText = new sf::Text(font, text, characterSize);
   setText();
@@ -51,28 +51,6 @@ void Button::setScale(sf::Vector2f scale) {
 void Button::draw(sf::RenderTarget& target, sf::RenderStates states) const {
   target.draw(static_cast<sf::RectangleShape>(*this), states);
   target.draw(*m_buttonText, states);
-
-  sf::RectangleShape diff(sf::Vector2f(
-      (getGlobalBounds().size.x - m_buttonText->getGlobalBounds().size.x) / 2,
-      (getGlobalBounds().size.y - m_buttonText->getGlobalBounds().size.y) / 2));
-  diff.setPosition(getPosition());
-  diff.setFillColor(sf::Color::Transparent);
-  diff.setOutlineColor(sf::Color::Red);
-  diff.setOutlineThickness(.25f);
-  target.draw(diff, states);
-
-  sf::RectangleShape textBounds(
-      sf::Vector2f(m_buttonText->getGlobalBounds().size.x,
-                   m_buttonText->getGlobalBounds().size.y));
-  textBounds.setPosition(m_buttonText->getPosition());
-  textBounds.setFillColor(sf::Color::Transparent);
-  textBounds.setOutlineColor(sf::Color::Green);
-  textBounds.setOutlineThickness(.25f);
-  target.draw(textBounds, states);
-
-  sf::Vertex point(sf::Vector2f(getPosition().x, getPosition().y));
-  point.color = sf::Color::Blue;
-  target.draw(&point, 1, sf::PrimitiveType::Points, states);
 }
 
 bool Button::isMouseOver(const sf::RenderWindow& window) const {

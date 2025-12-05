@@ -23,6 +23,7 @@ class Button : public sf::RectangleShape {
  private:
   sf::Text* m_buttonText;
   ButtonState state = ButtonState::NORMAL;
+  void (*m_clickAction)(sf::Vector2f, Button&);
   virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
   void setText();
 };
