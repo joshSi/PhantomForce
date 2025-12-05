@@ -11,6 +11,7 @@
 
 int runGame(int framerate = 60) {
   const float VIEW_SCALE = 0.25f;
+  const unsigned int SMALL_FONT_SIZE = 32;
   GameState game_state = GameState::Menu;
   int* m_p;  // Pointer to dynamically allocated array for tile map data
   sf::Clock m_clock;
@@ -43,6 +44,7 @@ int runGame(int framerate = 60) {
   if (!font.openFromFile(resourcePath + "EBB.ttf")) {
     printf("Loading font failed\n");
   }
+  const_cast<sf::Texture&>(font.getTexture(SMALL_FONT_SIZE)).setSmooth(false);
 
   Player* play = new Player(tex, &def, 6.f);
   play->setPosition(sf::Vector2f(10, 10));
@@ -73,6 +75,23 @@ int runGame(int framerate = 60) {
   // Create a transparent overlay for the pause effect
   sf::RectangleShape pauseOverlay(sf::Vector2f(m_window.getSize()));
   pauseOverlay.setFillColor(sf::Color(0, 0, 0, 150));  // Black with alpha
+
+  // Define menu
+  sf::Text titleText(font);
+  titleText.setString("Phantom Force");
+  titleText.setCharacterSize(48);
+  titleText.setPosition(sf::Vector2f(10, 40));
+  Button startButton(
+      sf::Vector2f(200, 50),
+      sf::Vector2f((std::floor(m_window.getSize().x - 200) / 2.0f),
+                   std::floor((m_window.getSize().y - 50) / 2.0f) + 100),
+      "Start Game", font, SMALL_FONT_SIZE);
+
+  auto drawMenu = [&]() {
+    m_window.setView(m_window.getDefaultView());
+    m_window.draw(titleText);
+    m_window.draw(startButton);
+  };
 
   // Define a lambda to draw the game world
   auto drawWorld = [&]() {
@@ -159,9 +178,9 @@ int runGame(int framerate = 60) {
         if (const sf::Event::MouseButtonPressed* mousePressed =
                 event->getIf<sf::Event::MouseButtonPressed>()) {
           if (mousePressed->button == sf::Mouse::Button::Left) {
-            // Check if any button is clicked
-            // If start button clicked:
-            game_state = GameState::Playing;
+            if (startButton.isMouseOver(m_window)) {
+              game_state = GameState::Playing;
+            }
           }
         }
       }
@@ -188,9 +207,14 @@ int runGame(int framerate = 60) {
     m_window.clear(sf::Color(50, 50, 50));  // Clear once per frame
 
     if (game_state == GameState::Menu) {
-      // Draw Menu (UI View)
-      m_window.setView(m_window.getDefaultView());
+      if (startButton.isMouseOver(m_window)) {
+        startButton.setFillColor(sf::Color(170, 170, 170));
+      } else {
+        startButton.setFillColor(sf::Color(200, 200, 200));
+      }
 
+      // Draw Menu (UI View)
+      drawMenu();
     } else {
       drawWorld();
 
@@ -198,7 +222,7 @@ int runGame(int framerate = 60) {
       if (game_state == GameState::Paused) {
         m_window.setView(m_window.getDefaultView());
         m_window.draw(pauseOverlay);
-        sf::Text pausedText(font, "Game Paused", 30);
+        sf::Text pausedText(font, "Game Paused", SMALL_FONT_SIZE);
         pausedText.setFillColor(sf::Color::White);
 
         // Center text using screen coordinates
