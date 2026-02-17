@@ -3,9 +3,13 @@
 #include "utils.h"
 
 bool Object::g_draw_collisions = false;
-const sf::Texture null_texture;
 
-Object::Object() : sf::Sprite(null_texture), m_mass(0) {
+static const sf::Texture &get_null_texture() {
+  static const sf::Texture *tex = new sf::Texture();
+  return *tex;
+}
+
+Object::Object() : sf::Sprite(get_null_texture()), m_mass(0) {
   sf::Vector2f object_size =
       sf::Vector2f(getLocalBounds().size.x, getLocalBounds().size.y);
   setOrigin(sf::Vector2f(object_size.x / 2, object_size.y / 2));
@@ -17,7 +21,7 @@ Object::Object(sf::Texture &tex) : sf::Sprite(tex), m_mass(0) {
   setOrigin(sf::Vector2f(object_size.x / 2, object_size.y / 2));
 };
 
-Circle::Circle() : sf::Sprite(null_texture), m_radius(1) {}
+Circle::Circle() : sf::Sprite(get_null_texture()), m_radius(1) {}
 
 Circle::Circle(sf::Texture &tex) : sf::Sprite(tex), m_radius(1) {
   sf::Vector2f object_size =
@@ -28,7 +32,7 @@ Circle::Circle(sf::Texture &tex) : sf::Sprite(tex), m_radius(1) {
 
 Circle::Circle(sf::Texture &tex, float r) : sf::Sprite(tex), m_radius(r) {}
 
-Rectangle::Rectangle() : sf::Sprite(null_texture), m_size(2, 2) {}
+Rectangle::Rectangle() : sf::Sprite(get_null_texture()), m_size(2, 2) {}
 
 Rectangle::Rectangle(sf::Texture &tex) : sf::Sprite(tex) {
   setTexture(tex);

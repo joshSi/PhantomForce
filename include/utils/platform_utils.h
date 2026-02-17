@@ -5,15 +5,26 @@
 #endif
 #include <string>
 
-std::string getResourcePath() {
+inline std::string getResourcePath() {
 #ifdef __APPLE__
-  CFURLRef appUrlRef = CFBundleCopyBundleURL(CFBundleGetMainBundle());
+  CFBundleRef mainBundle = CFBundleGetMainBundle();
+  if (mainBundle == NULL) return "assets/";
+
+  CFURLRef appUrlRef = CFBundleCopyBundleURL(mainBundle);
+  if (appUrlRef == NULL) return "assets/";
+
   CFStringRef macPath =
       CFURLCopyFileSystemPath(appUrlRef, kCFURLPOSIXPathStyle);
-  const char *pathPtr =
-      CFStringGetCStringPtr(macPath, CFStringGetSystemEncoding());
-  std::string path(pathPtr);
-  std::string resourcePath = path + "/Contents/Resources/";
+  if (macPath == NULL) {
+    CFRelease(appUrlRef);
+    return "assets/";
+  }
+
+  char path[1024];
+  std::string resourcePath = "assets/";
+  if (CFStringGetCString(macPath, path, sizeof(path), kCFStringEncodingUTF8)) {
+    resourcePath = std::string(path) + "/Contents/Resources/";
+  }
 
   CFRelease(appUrlRef);
   CFRelease(macPath);

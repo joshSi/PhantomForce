@@ -6,6 +6,7 @@ class Object : virtual public sf::Sprite {
  public:
   Object();
   Object(sf::Texture &tex);
+  virtual ~Object() = default;
   virtual bool checkCollision(Object *obj) const = 0;
   virtual void snapCollision(Object *obj) = 0;
   virtual void drawCollision(sf::RenderTarget *target) const = 0;

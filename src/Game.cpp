@@ -240,11 +240,14 @@ int runGame(int framerate = 60) {
     m_window.display();
   }
   delete[] m_p;
+  delete play;
+
+  for (auto* obj : m_object_list) {
+    delete obj;
+  }
+  m_object_list.clear();
 
   for (auto& layer : m_sprite_layer) {
-    for (auto* sprite : layer) {
-      delete sprite;
-    }
     layer.clear();
   }
 
