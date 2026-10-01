@@ -1,58 +1,29 @@
 #include "Player.h"
 
-#include "utils.h"
+namespace {
+constexpr float kSprintMultiplier = 1.5f;
+}
 
 Player::Player(sf::Texture& tex, MoveStats* s, float r)
-    : Circle(tex, r), sf::Sprite(tex), m_stat(s) {}
-
-void Player::move(sf::Vector2f velocity, float fr, bool sprint, uint8_t input) {
-  sf::Vector2f v(
-      int((input & 0b00000001) != 0) - int((input & 0b00000010) != 0),
-      int((input & 0b00000100) != 0) - int((input & 0b00001000) != 0));
-
-  if (len(v)) m_spd_vec += v * (m_stat->accel * fr / len(v));
-
-  if (len(m_spd_vec)) {
-    m_spd_vec *= powf(m_stat->fric, fr);
-    if (len(m_spd_vec) < 0.05f) m_spd_vec *= 0.f;
-  }
-
-  if (len(m_spd_vec) > m_stat->max_spd)
-    m_spd_vec *= (m_stat->max_spd / len(m_spd_vec));
-
-  sf::Sprite::move(m_spd_vec * fr);
-  checkCollision();
-  m_last_pos = getPosition();
+    : sf::Sprite(tex), Circle(tex, r), m_stat(s) {
+  setMass(1.f);
+  setRestitution(0.f);  // the player does not bounce off walls
+  setFriction(0.f);     // ...and slides along them freely
+  setLinearDamping(m_stat->fric);
 }
 
-void Player::checkCollision() {
-  if (m_objects_ref != nullptr)
-    for (int i = 0; i < m_objects_ref->size(); i++) {
-      if (Circle::checkCollision((*m_objects_ref)[i])) {
-        if (dynamic_cast<Circle*>((*m_objects_ref)[i])) {
-          const sf::Vector2f delta =
-              (*m_objects_ref)[i]->getPosition() - getPosition();
-          const sf::Vector2f tangent = {delta.y, -delta.x};
-          const float cos =
-              tangent.x * m_spd_vec.x + tangent.y * m_spd_vec.y / len(delta);
+void Player::update(uint8_t input, float dt, bool sprint) {
+  const float boost = sprint ? kSprintMultiplier : 1.f;
+  setLinearDamping(m_stat->fric);
 
-          m_spd_vec = cos * tangent / len(tangent) * 0.01f;
-          snapCollision((*m_objects_ref)[i]);
-        } else if (dynamic_cast<Rectangle*>((*m_objects_ref)[i])) {
-          const sf::Vector2f delta =
-              (*m_objects_ref)[i]->getPosition() - getPosition();
-          if (abs(delta.x) /
-                  static_cast<Rectangle*>((*m_objects_ref)[i])->getSize().x <
-              abs(delta.y) /
-                  static_cast<Rectangle*>((*m_objects_ref)[i])->getSize().y) {
-            m_spd_vec = {0, m_spd_vec.y};
-          } else {
-            m_spd_vec = {m_spd_vec.x, 0};
-          }
-          snapCollision((*m_objects_ref)[i]);
-        }
-      }
-    }
+  const sf::Vector2f dir(static_cast<float>((input & kRight) != 0) -
+                             static_cast<float>((input & kLeft) != 0),
+                         static_cast<float>((input & kDown) != 0) -
+                             static_cast<float>((input & kUp) != 0));
+  if (dir != sf::Vector2f(0.f, 0.f))
+    m_velocity += dir.normalized() * (m_stat->accel * boost * dt);
+
+  const float max_spd = m_stat->max_spd * boost;
+  if (m_velocity.lengthSquared() > max_spd * max_spd)
+    m_velocity = m_velocity.normalized() * max_spd;
 }
-
-void Player::setObjects(std::vector<Object*>* objs) { m_objects_ref = objs; }

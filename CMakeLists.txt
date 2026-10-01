@@ -3,6 +3,21 @@ project(PhantomForce LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(PHANTOMFORCE_BUILD_TESTS "Build the PhantomForce unit tests" ON)
+
+# Physics engine, shared by the game and the unit tests
+set(
+  PHYSICS_SOURCES
+  src/physics/Body.cpp
+  src/physics/Collision.cpp
+  src/physics/PhysicsWorld.cpp
+)
+set(
+  PHYSICS_HEADERS
+  include/physics/Body.h
+  include/physics/Collision.h
+  include/physics/PhysicsWorld.h
+)
 set(
   SOURCES
   src/main.cpp
@@ -39,18 +54,23 @@ if(NOT SFML_FOUND)
   FetchContent_MakeAvailable(SFML)
 endif()
 
+add_library(PhantomForcePhysics STATIC ${PHYSICS_SOURCES} ${PHYSICS_HEADERS})
+target_include_directories(PhantomForcePhysics PUBLIC include)
+target_link_libraries(PhantomForcePhysics PUBLIC SFML::Graphics)
+target_compile_features(PhantomForcePhysics PUBLIC cxx_std_20)
+
 if (APPLE)
   set_source_files_properties(${RESOURCES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
   add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${RESOURCES})
-  target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics "-framework CoreFoundation")
+  target_link_libraries(${PROJECT_NAME} PRIVATE PhantomForcePhysics SFML::Graphics "-framework CoreFoundation")
 elseif(WIN32)
   file(COPY ${RESOURCE_PATH} DESTINATION ${CMAKE_BINARY_DIR})
   add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-  target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics)
+  target_link_libraries(${PROJECT_NAME} PRIVATE PhantomForcePhysics SFML::Graphics)
 else()
   file(COPY ${RESOURCE_PATH} DESTINATION ${CMAKE_BINARY_DIR})
   add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${RESOURCES})
-  target_link_libraries(${PROJECT_NAME} PRIVATE SFML::Graphics)
+  target_link_libraries(${PROJECT_NAME} PRIVATE PhantomForcePhysics SFML::Graphics)
 endif()
 target_include_directories(${PROJECT_NAME} PRIVATE include include/utils include/menu include/assets)
 
@@ -60,6 +80,17 @@ if (WIN32 AND BUILD_SHARED_LIBS)
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> $<TARGET_FILE_DIR:${PROJECT_NAME}> COMMAND_EXPAND_LISTS)
   add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${RESOURCE_PATH}/ $<TARGET_FILE_DIR:${PROJECT_NAME}>/${RESOURCE_PATH}/ COMMAND_EXPAND_LISTS)
+endif()
+
+if (PHANTOMFORCE_BUILD_TESTS)
+  enable_testing()
+  add_executable(physics_tests tests/physics_tests.cpp)
+  target_link_libraries(physics_tests PRIVATE PhantomForcePhysics)
+  add_test(NAME physics_tests COMMAND physics_tests)
+  if (WIN32 AND BUILD_SHARED_LIBS)
+    add_custom_command(TARGET physics_tests POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:physics_tests> $<TARGET_FILE_DIR:physics_tests> COMMAND_EXPAND_LISTS)
+  endif()
 endif()
 
 if (APPLE)
