@@ -1,6 +1,7 @@
 #ifndef PHYSICS_WORLD_H
 #define PHYSICS_WORLD_H
 #include <SFML/Graphics/RenderTarget.hpp>
+#include <cstddef>
 #include <functional>
 #include <vector>
 
@@ -21,11 +22,22 @@ struct Contact {
   float restitution_bias[2] = {0.f, 0.f};
 };
 
+// Work done by the most recent step, for profiling and the debug overlay.
+struct Stats {
+  std::size_t bodies = 0;
+  std::size_t broadphase_pairs = 0;   // bounding boxes that overlapped on x
+  std::size_t narrowphase_tests = 0;  // exact shape tests actually run
+  std::size_t resting_pairs = 0;      // pairs skipped because neither moves
+  std::size_t contacts = 0;
+  float step_time_us = 0.f;  // wall-clock time of the step, microseconds
+};
+
 // 2D rigid-body simulation.
 //
 // Each call to step(dt):
 //   1. finds overlapping pairs (sort-and-sweep broad phase on bounding boxes,
-//      then exact circle / box tests that also produce contact points),
+//      then exact circle / box tests that also produce contact points);
+//      without gravity, pairs where neither body is moving are skipped,
 //   2. decides which contacts bounce from the velocities before gravity is
 //      applied, so resting bodies never pick up energy from gravity,
 //   3. integrates forces, torques, gravity and damping into velocities,
@@ -88,9 +100,12 @@ class PhysicsWorld {
 
   // Contacts found during the most recent step.
   const std::vector<Contact> &getContacts() const { return m_contacts; }
+  // Counters and timing for the most recent step.
+  const Stats &getStats() const { return m_stats; }
 
   // Draws every body's collision shape plus the contact points and normals.
-  void drawDebug(sf::RenderTarget &target) const;
+  // Returns the number of draw calls it made.
+  std::size_t drawDebug(sf::RenderTarget &target) const;
 
  private:
   struct Proxy {
@@ -109,6 +124,7 @@ class PhysicsWorld {
   std::vector<Body *> m_bodies;
   std::vector<Contact> m_contacts;
   std::vector<Proxy> m_proxies;  // scratch space for the broad phase
+  Stats m_stats;
   sf::Vector2f m_gravity{0.f, 0.f};
   float m_ground_gravity = 300.f;  // ~9.8 m/s^2 at 30 pixels per metre
   Surface m_default_surface;

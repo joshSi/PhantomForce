@@ -36,7 +36,7 @@ class Object : virtual public sf::Sprite, public physics::Body {
 
   static bool g_draw_collisions;
 
- private:
+ protected:
   void centerOrigin();
 };
 
@@ -56,6 +56,8 @@ class Rectangle : public Object {
   Rectangle();
   // Size defaults to the texture size.
   explicit Rectangle(sf::Texture &tex);
+  // The texture is tiled (or cropped) to cover `size`, so the sprite always
+  // matches the collider; make the texture repeated for a tiled look.
   Rectangle(sf::Texture &tex, sf::Vector2f size);
 
   sf::Vector2f getSize() const { return getShape().half_size * 2.f; }

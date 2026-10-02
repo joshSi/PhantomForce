@@ -101,6 +101,14 @@ void TileMap::flash(sf::Vector2i t) {
   }
 }
 
+int TileMap::getTile(sf::Vector2f world_pos) const {
+  if (world_pos.x < 0.f || world_pos.y < 0.f) return -1;
+  const unsigned int x = static_cast<unsigned int>(world_pos.x) / m_tileSize.x;
+  const unsigned int y = static_cast<unsigned int>(world_pos.y) / m_tileSize.y;
+  if (x >= m_mapSize.x || y >= m_mapSize.y) return -1;
+  return m_tiles[x + y * m_mapSize.x];
+}
+
 void TileMap::draw(sf::RenderTarget& target, sf::RenderStates states) const {
   // Set the TileMap's texture as the current texture in the RenderStates
   states.texture = &m_tileset;

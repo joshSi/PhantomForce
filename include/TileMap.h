@@ -10,6 +10,10 @@ class TileMap : public sf::Drawable {
   void loadVertexChunk(sf::Vector2f view_coord);
   // Flashes the chunk with tile v as the topleft corner
   void flash(sf::Vector2i v);
+  // Tile number under a world position, or -1 outside the map
+  int getTile(sf::Vector2f world_pos) const;
+  const sf::Vector2u& getTileSize() const { return m_tileSize; }
+  const sf::Vector2u& getMapSize() const { return m_mapSize; }
 
  private:
   virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;

@@ -2,6 +2,7 @@
 
 #include <SFML/Graphics/VertexArray.hpp>
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 
 namespace physics {
@@ -57,6 +58,7 @@ void PhysicsWorld::clear() {
 
 void PhysicsWorld::step(float dt) {
   if (dt <= 0.f) return;
+  const auto start = std::chrono::steady_clock::now();
 
   findContacts();
   prepareContacts(dt);
@@ -70,10 +72,23 @@ void PhysicsWorld::step(float dt) {
   if (m_on_contact)
     for (const Contact &contact : m_contacts)
       m_on_contact(*contact.a, *contact.b, contact.manifold);
+
+  m_stats.bodies = m_bodies.size();
+  m_stats.contacts = m_contacts.size();
+  m_stats.step_time_us = std::chrono::duration<float, std::micro>(
+                             std::chrono::steady_clock::now() - start)
+                             .count();
 }
 
 void PhysicsWorld::findContacts() {
   m_contacts.clear();
+  m_stats.broadphase_pairs = 0;
+  m_stats.narrowphase_tests = 0;
+  m_stats.resting_pairs = 0;
+  // Without gravity a body at rest stays put, so two resting bodies cannot
+  // start overlapping and need no test. With gravity everything keeps
+  // getting nudged, so every pair is checked.
+  const bool skip_resting = m_gravity == sf::Vector2f(0.f, 0.f);
 
   // Broad phase: sort bounding boxes along x and only test pairs whose x
   // ranges overlap (sort-and-sweep).
@@ -91,10 +106,16 @@ void PhysicsWorld::findContacts() {
     for (std::size_t j = i + 1; j < m_proxies.size(); ++j) {
       const Proxy &pb = m_proxies[j];
       if (pb.aabb.position.x >= right) break;  // nothing further can overlap
+      ++m_stats.broadphase_pairs;
       if (pa.body->isStatic() && pb.body->isStatic()) continue;
+      if (skip_resting && pa.body->isResting() && pb.body->isResting()) {
+        ++m_stats.resting_pairs;
+        continue;
+      }
       if (!overlaps(pa.aabb, pb.aabb)) continue;
 
       // Narrow phase
+      ++m_stats.narrowphase_tests;
       Contact contact{pa.body, pb.body, Manifold{}};
       if (pa.body->collide(*pb.body, contact.manifold))
         m_contacts.push_back(contact);
@@ -250,6 +271,11 @@ void PhysicsWorld::integrateVelocities(float dt) {
     const float omega = body->getAngularVelocity();
     if (omega != 0.f) body->setAngle(body->getAngle() + omega * dt);
     body->clearForces();
+    if (velocity == sf::Vector2f(0.f, 0.f) && omega == 0.f) {
+      if (body->m_rest_steps < Body::kRestStepsNeeded) ++body->m_rest_steps;
+    } else {
+      body->m_rest_steps = 0;
+    }
   }
 }
 
@@ -263,15 +289,22 @@ void PhysicsWorld::correctPositions() const {
     const float depth =
         std::max(contact.manifold.penetration - kPenetrationSlop, 0.f);
     if (depth == 0.f) continue;
+    // Remove most of the overlap each step; once only a sliver is left take
+    // it all so the pair settles instead of creeping forever.
+    const float percent = depth < kPenetrationSlop ? 1.f : kCorrectionPercent;
     const sf::Vector2f correction =
-        contact.manifold.normal * (depth * kCorrectionPercent / inv_mass_sum);
+        contact.manifold.normal * (depth * percent / inv_mass_sum);
     a.translate(-correction * a.getInverseMass());
     b.translate(correction * b.getInverseMass());
+    // Being pushed apart counts as moving: keep testing until they separate
+    if (a.getInverseMass() > 0.f) a.wake();
+    if (b.getInverseMass() > 0.f) b.wake();
   }
 }
 
-void PhysicsWorld::drawDebug(sf::RenderTarget &target) const {
-  for (const Body *body : m_bodies) drawShape(target, *body);
+std::size_t PhysicsWorld::drawDebug(sf::RenderTarget &target) const {
+  std::size_t draw_calls = 0;
+  for (const Body *body : m_bodies) draw_calls += drawShape(target, *body);
 
   // Contact points as small crosses with the contact normal pointing at b.
   constexpr float kCrossSize = 1.5f;
@@ -290,7 +323,11 @@ void PhysicsWorld::drawDebug(sf::RenderTarget &target) const {
       lines.append(sf::Vertex{p + n * kNormalLength, color});
     }
   }
-  if (lines.getVertexCount() > 0) target.draw(lines);
+  if (lines.getVertexCount() > 0) {
+    target.draw(lines);
+    ++draw_calls;
+  }
+  return draw_calls;
 }
 
 }  // namespace physics

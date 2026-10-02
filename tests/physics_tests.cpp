@@ -491,6 +491,132 @@ void test_surfaces_skip_static_and_airborne_bodies() {
   CHECK(near(bullet.getSurface().friction, 0.f));  // never sampled
 }
 
+// --- Performance characteristics
+// ----------------------------------------------
+
+void test_density_sets_mass_from_area() {
+  Body disc = circle(2.f);
+  disc.setDensity(0.5f);
+  CHECK(near(disc.getMass(), 0.5f * 3.14159265f * 4.f));
+  Body plank = box({10.f, 2.f});
+  plank.setDensity(0.5f);
+  CHECK(near(plank.getMass(), 10.f));
+  CHECK(near(plank.getInertia(), 10.f * (100.f + 4.f) / 12.f));
+}
+
+void test_broad_phase_scales_with_overlaps_not_bodies() {
+  // 100 circles spread out along x: no bounding boxes overlap, so there must
+  // be no pair work at all, however many bodies there are.
+  std::vector<Body> grid;
+  grid.reserve(100);
+  for (int i = 0; i < 100; ++i) {
+    grid.emplace_back(Shape::circle(1.f));
+    grid.back().setPosition({i * 3.f, (i % 10) * 10.f});
+    grid.back().setMass(1.f);
+    grid.back().setVelocity({1.f, 0.f});
+  }
+  PhysicsWorld world;
+  for (Body &b : grid) world.addBody(&b);
+  world.step(0.001f);
+  const physics::Stats &s = world.getStats();
+  CHECK(s.bodies == 100);
+  CHECK(s.broadphase_pairs == 0);
+  CHECK(s.narrowphase_tests == 0);
+  CHECK(s.contacts == 0);
+  CHECK(s.step_time_us >= 0.f);
+
+  // A column of bodies: every pair overlaps on x, but the y check rejects
+  // all of them before any exact test runs.
+  std::vector<Body> column;
+  column.reserve(50);
+  for (int i = 0; i < 50; ++i) {
+    column.emplace_back(Shape::box({2.f, 2.f}));
+    column.back().setPosition({0.f, i * 10.f});
+    column.back().setMass(1.f);
+    column.back().setVelocity({0.f, 1.f});
+  }
+  PhysicsWorld tall;
+  for (Body &b : column) tall.addBody(&b);
+  tall.step(0.001f);
+  CHECK(tall.getStats().broadphase_pairs == 50 * 49 / 2);
+  CHECK(tall.getStats().narrowphase_tests == 0);
+}
+
+void test_resting_pairs_are_not_retested() {
+  Body a = box({2.f, 2.f});
+  Body b = box({2.f, 2.f});
+  b.setPosition({1.9f, 0.f});  // overlapping
+  a.setMass(1.f);
+  b.setMass(1.f);
+  a.setRestitution(0.f);  // so a hit leaves them touching, not bouncing apart
+  b.setRestitution(0.f);
+  PhysicsWorld world;
+  world.addBody(&a);
+  world.addBody(&b);
+
+  // Freshly placed bodies are tested and pushed apart even though they have
+  // no velocity...
+  world.step(0.01f);
+  CHECK(world.getStats().resting_pairs == 0);
+  CHECK(world.getStats().narrowphase_tests == 1);
+  CHECK(b.getPosition().x > 1.9f);
+  // ...and once separated and still for a couple of steps they are skipped
+  for (int i = 0; i < 10; ++i) world.step(0.01f);
+  CHECK(world.getStats().resting_pairs == 1);
+  CHECK(world.getStats().narrowphase_tests == 0);
+  CHECK(a.isResting() && b.isResting());
+  const float settled_x = b.getPosition().x;
+
+  // As soon as one moves the pair is live again
+  b.setVelocity({-10.f, 0.f});
+  world.step(0.01f);
+  CHECK(world.getStats().resting_pairs == 0);
+  CHECK(world.getStats().narrowphase_tests == 1);
+  CHECK(world.getStats().contacts == 1);
+  // Equal masses, inelastic: they move on together at half the speed
+  CHECK(near(a.getVelocity().x, -5.f, 0.1f));
+  CHECK(near(b.getVelocity().x, -5.f, 0.1f));
+
+  // wake() forces a re-test, e.g. after teleporting a body
+  a.setVelocity({0.f, 0.f});
+  b.setVelocity({0.f, 0.f});
+  for (int i = 0; i < 10; ++i) world.step(0.01f);
+  CHECK(world.getStats().resting_pairs == 1);
+  b.setPosition({settled_x - 0.5f, 0.f});
+  b.wake();
+  world.step(0.01f);
+  CHECK(world.getStats().narrowphase_tests == 1);
+
+  // Forces count as motion too
+  PhysicsWorld again;
+  Body c = box({2.f, 2.f});
+  Body d = box({2.f, 2.f});
+  d.setPosition({1.9f, 0.f});
+  c.setMass(1.f);
+  d.setMass(1.f);
+  again.addBody(&c);
+  again.addBody(&d);
+  for (int i = 0; i < 10; ++i) again.step(0.01f);  // settle
+  CHECK(again.getStats().resting_pairs == 1);
+  c.applyForce({1.f, 0.f});
+  again.step(0.01f);
+  CHECK(again.getStats().narrowphase_tests == 1);
+
+  // Under gravity nothing is ever considered resting
+  PhysicsWorld falling;
+  falling.setGravity({0.f, 1.f});
+  Body e = box({2.f, 2.f});
+  Body f = box({2.f, 2.f});
+  f.setPosition({1.9f, 0.f});
+  e.setMass(1.f);
+  f.setMass(1.f);
+  falling.addBody(&e);
+  falling.addBody(&f);
+  falling.step(0.01f);
+  CHECK(falling.getStats().resting_pairs == 0);
+  CHECK(falling.getStats().narrowphase_tests == 1);
+}
+
 class ExternalAngleBody : public Body {
  public:
   explicit ExternalAngleBody(const Shape &shape) : Body(shape) {}
@@ -901,6 +1027,9 @@ int main() {
   test_fixed_rotation_body_does_not_spin();
   test_ball_rolls_on_floor();
   test_external_angle_is_used();
+  test_density_sets_mass_from_area();
+  test_broad_phase_scales_with_overlaps_not_bodies();
+  test_resting_pairs_are_not_retested();
   test_surface_friction_is_a_constant_deceleration();
   test_ice_slides_further_than_metal();
   test_surface_drag_is_exponential();

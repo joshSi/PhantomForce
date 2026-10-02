@@ -25,6 +25,7 @@ struct Shape {
   // World-space bounding box of the shape placed at `center`, rotated by
   // `angle` radians.
   sf::FloatRect aabb(sf::Vector2f center, float angle = 0.f) const;
+  float area() const;
   // Moment of inertia about the centre for a body of the given mass.
   float inertia(float mass) const;
   // Typical distance from the centre to the ground contact area, used to
@@ -84,11 +85,25 @@ class Body {
   // A mass of 0 makes the body static. The moment of inertia follows from the
   // mass and the shape.
   void setMass(float mass);
+  // Sets the mass from the shape's area, so bigger objects of the same
+  // material are heavier.
+  void setDensity(float density) { setMass(density * m_shape.area()); }
   float getMass() const { return m_mass; }
   float getInverseMass() const { return m_inv_mass; }
   bool isStatic() const { return m_inv_mass == 0.f; }
   float getInertia() const { return m_inertia; }
   float getInverseInertia() const { return m_inv_inertia; }
+  // True once the body has sat still (no velocity, spin, force or torque)
+  // for a couple of steps without being pushed. Without gravity the world
+  // skips collision tests between two resting bodies.
+  bool isResting() const {
+    return m_rest_steps >= kRestStepsNeeded &&
+           m_velocity == sf::Vector2f(0.f, 0.f) && m_angular_velocity == 0.f &&
+           m_force == sf::Vector2f(0.f, 0.f) && m_torque == 0.f;
+  }
+  // Marks the body as moved so it is tested again, e.g. after teleporting it
+  // with setPosition.
+  void wake() { m_rest_steps = 0; }
 
   // When fixed, collisions never change the angular velocity (the body can
   // still be rotated directly or given an angular velocity by hand).
@@ -174,6 +189,10 @@ class Body {
   Surface m_surface;
 
  private:
+  friend class PhysicsWorld;
+  static constexpr unsigned kRestStepsNeeded = 2;
+  unsigned m_rest_steps = 0;  // consecutive steps spent motionless
+
   void updateInertia();
 
   Shape m_shape;
@@ -181,8 +200,8 @@ class Body {
   float m_angle = 0.f;                // unused when getAngle is overridden
 };
 
-// Draws the body's collision shape for debugging.
-void drawShape(sf::RenderTarget& target, const Body& body);
+// Draws the body's collision shape for debugging. Returns the draw calls made.
+std::size_t drawShape(sf::RenderTarget& target, const Body& body);
 
 }  // namespace physics
 

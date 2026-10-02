@@ -6,6 +6,8 @@
 
 namespace physics {
 
+constexpr unsigned Body::kRestStepsNeeded;
+
 namespace {
 const sf::Color kDebugFill(255, 255, 255, 60);
 const sf::Color kDebugOutline(255, 255, 255, 200);
@@ -30,6 +32,11 @@ sf::FloatRect Shape::aabb(sf::Vector2f center, float angle) const {
     return sf::FloatRect(center - sf::Vector2f(radius, radius),
                          sf::Vector2f(2.f * radius, 2.f * radius));
   return BoxCollider{center, half_size, angle}.bounds();
+}
+
+float Shape::area() const {
+  if (type == Type::Circle) return 3.14159265f * radius * radius;
+  return 4.f * half_size.x * half_size.y;
 }
 
 float Shape::inertia(float mass) const {
@@ -112,7 +119,7 @@ void Body::snapCollision(const Body& other) {
   if (collide(other, m)) translate(-m.normal * (m.penetration + kSkin));
 }
 
-void drawShape(sf::RenderTarget& target, const Body& body) {
+std::size_t drawShape(sf::RenderTarget& target, const Body& body) {
   const Shape& shape = body.getShape();
   if (shape.type == Shape::Type::Circle) {
     sf::CircleShape circle(shape.radius);
@@ -128,6 +135,7 @@ void drawShape(sf::RenderTarget& target, const Body& body) {
     line[0] = sf::Vertex{body.getPosition(), kDebugOutline};
     line[1] = sf::Vertex{body.getPosition() + spoke, kDebugOutline};
     target.draw(line);
+    return 2;
   } else {
     sf::RectangleShape rect(shape.half_size * 2.f);
     rect.setOrigin(shape.half_size);
@@ -137,6 +145,7 @@ void drawShape(sf::RenderTarget& target, const Body& body) {
     rect.setOutlineColor(kDebugOutline);
     rect.setOutlineThickness(-0.5f);
     target.draw(rect);
+    return 1;
   }
 }
 
