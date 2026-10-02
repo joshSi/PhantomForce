@@ -78,10 +78,11 @@ int runGame(int framerate = 60) {
   m_sprite_layer[2].push_back(r);
   m_world.addBody(r);
 
-  // Light crates that slide and pile up against the wall
+  // Light crates that slide and pile up against the wall (which spans
+  // x = 70..110, so they all start just clear of it)
   for (const sf::Vector2f& pos :
        {sf::Vector2f(50.f, 90.f), sf::Vector2f(50.f, 125.f),
-        sf::Vector2f(85.f, 108.f)}) {
+        sf::Vector2f(16.f, 108.f)}) {
     Rectangle* crate = new Rectangle(crate_tex);
     crate->setPosition(pos);
     crate->setMass(1.f);
