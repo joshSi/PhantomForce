@@ -39,4 +39,26 @@ sf::Vector2<T> max(sf::Vector2<T> a, sf::Vector2<T> b) {
   return sf::Vector2<T>(std::max(a.x, b.x), std::max(a.y, b.y));
 }
 
+// Smallest rectangle containing every non-transparent pixel of an image
+// (the whole image if it is fully transparent).
+inline sf::IntRect opaqueBounds(const sf::Image& image) {
+  const sf::Vector2u size = image.getSize();
+  unsigned int min_x = size.x, min_y = size.y, max_x = 0, max_y = 0;
+  bool any = false;
+  for (unsigned int y = 0; y < size.y; ++y)
+    for (unsigned int x = 0; x < size.x; ++x)
+      if (image.getPixel({x, y}).a > 0) {
+        min_x = std::min(min_x, x);
+        min_y = std::min(min_y, y);
+        max_x = std::max(max_x, x);
+        max_y = std::max(max_y, y);
+        any = true;
+      }
+  if (!any) return sf::IntRect({0, 0}, sf::Vector2i(size));
+  return sf::IntRect(
+      sf::Vector2i(static_cast<int>(min_x), static_cast<int>(min_y)),
+      sf::Vector2i(static_cast<int>(max_x - min_x + 1),
+                   static_cast<int>(max_y - min_y + 1)));
+}
+
 #endif

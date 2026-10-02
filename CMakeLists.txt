@@ -17,6 +17,7 @@ set(
   include/physics/Body.h
   include/physics/Collision.h
   include/physics/PhysicsWorld.h
+  include/physics/Surface.h
 )
 set(
   SOURCES
@@ -87,9 +88,14 @@ if (PHANTOMFORCE_BUILD_TESTS)
   add_executable(physics_tests tests/physics_tests.cpp)
   target_link_libraries(physics_tests PRIVATE PhantomForcePhysics)
   add_test(NAME physics_tests COMMAND physics_tests)
+  add_executable(physics_bench tests/physics_bench.cpp)
+  target_link_libraries(physics_bench PRIVATE PhantomForcePhysics)
+  add_test(NAME physics_bench COMMAND physics_bench)
   if (WIN32 AND BUILD_SHARED_LIBS)
-    add_custom_command(TARGET physics_tests POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:physics_tests> $<TARGET_FILE_DIR:physics_tests> COMMAND_EXPAND_LISTS)
+    foreach(test_target physics_tests physics_bench)
+      add_custom_command(TARGET ${test_target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${test_target}> $<TARGET_FILE_DIR:${test_target}> COMMAND_EXPAND_LISTS)
+    endforeach()
   endif()
 endif()
 

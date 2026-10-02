@@ -5,7 +5,8 @@
 #include "physics/Body.h"
 
 // A drawable sprite that is also a rigid body in the physics engine. The
-// body's position is the sprite's position, so moving one moves the other.
+// body's position and angle are the sprite's position and rotation, so moving
+// or spinning one moves or spins the other.
 // See physics::Body for the simulation properties (mass, velocity, ...).
 class Object : virtual public sf::Sprite, public physics::Body {
  public:
@@ -14,12 +15,18 @@ class Object : virtual public sf::Sprite, public physics::Body {
   Object(sf::Texture &tex, const physics::Shape &shape);
   virtual ~Object() = default;
 
-  // physics::Body position is backed by the sprite transform
+  // physics::Body position and angle are backed by the sprite transform
   sf::Vector2f getPosition() const override {
     return sf::Transformable::getPosition();
   }
   void setPosition(sf::Vector2f position) override {
     sf::Transformable::setPosition(position);
+  }
+  float getAngle() const override {
+    return sf::Transformable::getRotation().asRadians();
+  }
+  void setAngle(float radians) override {
+    sf::Transformable::setRotation(sf::radians(radians));
   }
 
   // Draws the collision shape (not the sprite) for debugging.
@@ -29,7 +36,7 @@ class Object : virtual public sf::Sprite, public physics::Body {
 
   static bool g_draw_collisions;
 
- private:
+ protected:
   void centerOrigin();
 };
 
@@ -49,6 +56,8 @@ class Rectangle : public Object {
   Rectangle();
   // Size defaults to the texture size.
   explicit Rectangle(sf::Texture &tex);
+  // The texture is tiled (or cropped) to cover `size`, so the sprite always
+  // matches the collider; make the texture repeated for a tiled look.
   Rectangle(sf::Texture &tex, sf::Vector2f size);
 
   sf::Vector2f getSize() const { return getShape().half_size * 2.f; }

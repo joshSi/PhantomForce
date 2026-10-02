@@ -48,4 +48,7 @@ Rectangle::Rectangle(sf::Texture &tex) : sf::Sprite(tex), Object(tex) {
 }
 
 Rectangle::Rectangle(sf::Texture &tex, sf::Vector2f size)
-    : sf::Sprite(tex), Object(tex, physics::Shape::box(size)) {}
+    : sf::Sprite(tex), Object(tex, physics::Shape::box(size)) {
+  setTextureRect(sf::IntRect({0, 0}, sf::Vector2i(size)));
+  centerOrigin();
+}

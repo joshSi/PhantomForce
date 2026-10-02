@@ -7,6 +7,7 @@
 #include "physics/Body.h"
 #include "physics/Collision.h"
 #include "physics/PhysicsWorld.h"
+#include "physics/Surface.h"
 
 namespace {
 
@@ -33,6 +34,7 @@ using physics::CircleCollider;
 using physics::Manifold;
 using physics::PhysicsWorld;
 using physics::Shape;
+using physics::Surface;
 
 Body circle(float radius) { return Body(Shape::circle(radius)); }
 Body box(sf::Vector2f size) { return Body(Shape::box(size)); }
@@ -130,8 +132,509 @@ void test_aabb_overlap() {
   const BoxCollider box = BoxCollider::fromRect(a);
   CHECK(near(box.center, {2.f, 2.f}));
   CHECK(near(box.half_size, {2.f, 2.f}));
-  CHECK(near(box.toRect().position, a.position));
-  CHECK(near(box.toRect().size, a.size));
+  CHECK(near(box.bounds().position, a.position));
+  CHECK(near(box.bounds().size, a.size));
+}
+
+// --- Rotation
+// -----------------------------------------------------------------
+
+constexpr float kPi = 3.14159265f;
+
+void test_rotated_box_bounds() {
+  const BoxCollider upright{{0.f, 0.f}, {2.f, 1.f}, 0.f};
+  CHECK(near(upright.bounds().size, {4.f, 2.f}));
+  const BoxCollider turned{{5.f, 5.f}, {2.f, 1.f}, kPi / 2.f};
+  CHECK(near(turned.bounds().position, {4.f, 3.f}));
+  CHECK(near(turned.bounds().size, {2.f, 4.f}));
+  const BoxCollider diagonal{{0.f, 0.f}, {2.f, 1.f}, kPi / 4.f};
+  CHECK(near(diagonal.bounds().size.x, 3.f * std::sqrt(2.f)));
+  CHECK(near(diagonal.bounds().size.y, 3.f * std::sqrt(2.f)));
+
+  sf::Vector2f corners[4];
+  turned.getVertices(corners);
+  CHECK(near(corners[0], {6.f, 3.f}));  // (-2, -1) rotated 90 degrees clockwise
+  CHECK(near(corners[2], {4.f, 7.f}));
+
+  const Shape shape = Shape::box({4.f, 2.f});
+  CHECK(near(shape.aabb({0.f, 0.f}, kPi / 2.f).size, {2.f, 4.f}));
+}
+
+void test_circle_vs_rotated_box() {
+  // A 4x2 box turned on its side occupies x in [-1, 1] and y in [-2, 2]
+  const BoxCollider box{{0.f, 0.f}, {2.f, 1.f}, kPi / 2.f};
+  Manifold m;
+  CHECK(!physics::collide(CircleCollider{{2.5f, 0.f}, 1.f}, box, m));
+  CHECK(!physics::collide(CircleCollider{{0.f, -3.5f}, 1.f}, box, m));
+  CHECK(physics::collide(CircleCollider{{1.5f, 0.f}, 1.f}, box, m));
+  CHECK(near(m.normal, {-1.f, 0.f}));
+  CHECK(near(m.penetration, 0.5f));
+  CHECK(m.contact_count == 1);
+  CHECK(near(m.contacts[0], {1.f, 0.f}));
+  CHECK(physics::collide(CircleCollider{{0.f, -2.5f}, 1.f}, box, m));
+  CHECK(near(m.normal, {0.f, 1.f}));
+  CHECK(near(m.penetration, 0.5f));
+}
+
+void test_box_vs_box_contact_points() {
+  Manifold m;
+  const BoxCollider a{{0.f, 0.f}, {2.f, 2.f}};
+  // Face contact: two contact points along a's right face
+  CHECK(physics::collide(a, BoxCollider{{3.f, 1.f}, {2.f, 2.f}}, m));
+  CHECK(m.contact_count == 2);
+  CHECK(near(m.contacts[0].x, 2.f) && near(m.contacts[1].x, 2.f));
+  CHECK(near(std::min(m.contacts[0].y, m.contacts[1].y), -1.f));
+  CHECK(near(std::max(m.contacts[0].y, m.contacts[1].y), 2.f));
+
+  // A diamond (45 degree box) poking its corner into a box: one contact point
+  const BoxCollider diamond{{0.f, 0.f}, {1.f, 1.f}, kPi / 4.f};
+  const float tip = std::sqrt(2.f);
+  CHECK(!physics::collide(diamond, BoxCollider{{2.5f, 0.f}, {1.f, 1.f}}, m));
+  CHECK(physics::collide(diamond, BoxCollider{{2.2f, 0.f}, {1.f, 1.f}}, m));
+  CHECK(near(m.normal, {1.f, 0.f}));
+  CHECK(near(m.penetration, tip - 1.2f));
+  CHECK(m.contact_count == 1);
+  CHECK(near(m.contacts[0], {tip, 0.f}));
+
+  // Reversed order flips the normal but finds the same contact
+  CHECK(physics::collide(BoxCollider{{2.2f, 0.f}, {1.f, 1.f}}, diamond, m));
+  CHECK(near(m.normal, {-1.f, 0.f}));
+  CHECK(near(m.contacts[0], {tip, 0.f}));
+}
+
+void test_inertia() {
+  Body b = box({4.f, 2.f});
+  b.setMass(3.f);
+  CHECK(near(b.getInertia(), 5.f));  // 3 * (16 + 4) / 12
+  CHECK(near(b.getInverseInertia(), 0.2f));
+  Body c = circle(2.f);
+  c.setMass(2.f);
+  CHECK(near(c.getInertia(), 4.f));  // 0.5 * 2 * 2^2
+  c.setShape(Shape::circle(1.f));
+  CHECK(near(c.getInertia(), 1.f));  // follows the shape
+  c.setFixedRotation(true);
+  CHECK(near(c.getInverseInertia(), 0.f));
+  c.applyImpulseAtPoint({0.f, 10.f}, c.getPosition() + sf::Vector2f(1.f, 0.f));
+  CHECK(near(c.getAngularVelocity(), 0.f));
+  CHECK(near(c.getVelocity(), {0.f, 5.f}));  // still pushed
+  c.setFixedRotation(false);
+  c.applyImpulseAtPoint({0.f, 10.f}, c.getPosition() + sf::Vector2f(1.f, 0.f));
+  CHECK(near(c.getAngularVelocity(), 10.f));  // r x J / I = 10 / 1
+
+  Body rock = box({2.f, 2.f});  // static: no inertia either
+  CHECK(near(rock.getInverseInertia(), 0.f));
+}
+
+void test_velocity_at_point_and_forces() {
+  Body b = circle(1.f);
+  b.setMass(2.f);  // I = 1
+  b.setVelocity({1.f, 0.f});
+  b.setAngularVelocity(2.f);  // clockwise on screen
+  // A point to the right of the centre moves down (y grows) when spinning
+  CHECK(near(b.getVelocityAtPoint({3.f, 0.f}), {1.f, 6.f}));
+
+  Body c = box({2.f, 2.f});
+  c.setMass(3.f);                               // I = 3 * 8 / 12 = 2
+  c.applyForceAtPoint({0.f, 6.f}, {1.f, 0.f});  // torque = 1 * 6 = 6
+  CHECK(near(c.getForce(), {0.f, 6.f}));
+  CHECK(near(c.getTorque(), 6.f));
+  c.clearForces();
+  CHECK(near(c.getTorque(), 0.f));
+}
+
+void test_torque_and_angular_damping() {
+  Body b = box({4.f, 2.f});
+  b.setMass(3.f);  // I = 5
+  PhysicsWorld world;
+  world.addBody(&b);
+  b.applyTorque(10.f);
+  world.step(0.5f);
+  CHECK(near(b.getAngularVelocity(), 1.f));  // 10 / 5 * 0.5
+  CHECK(near(b.getAngle(), 0.5f));
+  world.step(0.5f);
+  CHECK(near(b.getAngularVelocity(), 1.f));  // torque cleared, coasting
+  CHECK(near(b.getAngle(), 1.f));
+
+  b.setAngularDamping(1.f);
+  world.step(1.f);
+  CHECK(near(b.getAngularVelocity(), std::exp(-1.f), 0.01f));
+  b.setAngularDamping(50.f);
+  for (int i = 0; i < 20; ++i) world.step(0.1f);
+  CHECK(b.getAngularVelocity() == 0.f);
+
+  // Static bodies ignore torque but a hand-set spin still turns them
+  Body rock = circle(1.f);
+  rock.applyTorque(100.f);
+  rock.setAngularVelocity(2.f);
+  world.addBody(&rock);
+  world.step(0.5f);
+  CHECK(near(rock.getAngularVelocity(), 2.f));
+  CHECK(near(rock.getAngle(), 1.f));
+}
+
+// Angular momentum of a body about the origin: r x m v + I w
+float angularMomentum(const Body &b, sf::Vector2f position) {
+  return b.getMass() * physics::cross(position, b.getVelocity()) +
+         b.getInertia() * b.getAngularVelocity();
+}
+
+void test_off_centre_hit_spins_box() {
+  Body crate = box({2.f, 2.f});
+  crate.setMass(1.f);
+  crate.setFriction(0.f);
+  crate.setRestitution(0.f);
+  Body ball = circle(0.5f);
+  ball.setMass(1.f);
+  ball.setFriction(0.f);
+  ball.setRestitution(0.f);
+  ball.setPosition({-1.4f, -0.8f});  // hits the left face near its top corner
+  ball.setVelocity({10.f, 0.f});
+
+  const sf::Vector2f crate_pos = crate.getPosition();
+  const sf::Vector2f ball_pos = ball.getPosition();
+  const sf::Vector2f momentum_before = ball.getVelocity() * ball.getMass() +
+                                       crate.getVelocity() * crate.getMass();
+  const float angular_before =
+      angularMomentum(ball, ball_pos) + angularMomentum(crate, crate_pos);
+
+  PhysicsWorld world;
+  world.addBody(&crate);
+  world.addBody(&ball);
+  world.step(0.01f);
+
+  CHECK(crate.getVelocity().x > 0.f);
+  CHECK(crate.getAngularVelocity() >
+        0.f);  // pushed on its top: spins clockwise
+  CHECK(ball.getVelocity().x < 10.f);
+  CHECK(
+      near(ball.getAngularVelocity(), 0.f));  // no friction: ball keeps no spin
+  // Linear and angular momentum are conserved by the collision impulse
+  // (measured with the positions at the moment of impact).
+  const sf::Vector2f momentum_after = ball.getVelocity() * ball.getMass() +
+                                      crate.getVelocity() * crate.getMass();
+  CHECK(near(momentum_after, momentum_before, 1e-3f));
+  const float angular_after =
+      angularMomentum(ball, ball_pos) + angularMomentum(crate, crate_pos);
+  CHECK(near(angular_after, angular_before, 1e-3f));
+  CHECK(crate.getAngle() > 0.f);  // and it actually turned
+}
+
+void test_fixed_rotation_body_does_not_spin() {
+  Body crate = box({2.f, 2.f});
+  crate.setMass(1.f);
+  crate.setFixedRotation(true);
+  Body ball = circle(0.5f);
+  ball.setMass(1.f);
+  ball.setPosition({-1.4f, -0.8f});
+  ball.setVelocity({10.f, 0.f});
+
+  PhysicsWorld world;
+  world.addBody(&crate);
+  world.addBody(&ball);
+  world.step(0.01f);
+  CHECK(crate.getVelocity().x > 0.f);
+  CHECK(crate.getAngularVelocity() == 0.f);
+  CHECK(crate.getAngle() == 0.f);
+}
+
+void test_ball_rolls_on_floor() {
+  Body floor = box({200.f, 8.f});
+  floor.setPosition({0.f, 5.f});  // top face at y = 1
+  floor.setFriction(0.5f);
+  Body ball = circle(1.f);
+  ball.setMass(1.f);
+  ball.setFriction(0.5f);
+  ball.setRestitution(0.f);
+  ball.setPosition({0.f, 0.05f});
+  ball.setVelocity({10.f, 0.f});
+
+  PhysicsWorld world;
+  world.setGravity({0.f, 100.f});
+  world.addBody(&floor);
+  world.addBody(&ball);
+  for (int i = 0; i < 60; ++i) world.step(0.01f);
+
+  // Friction converts sliding into rolling: moving right on a floor below
+  // means spinning clockwise, and the contact point comes (nearly) to rest.
+  // The ball sits a hair inside the floor, so its lever arm is just under 1.
+  CHECK(ball.getAngularVelocity() > 0.f);
+  CHECK(ball.getVelocity().x < 10.f);
+  CHECK(near(ball.getVelocity().x, 10.f * 2.f / 3.f, 0.1f));  // v = 2/3 v0
+  const sf::Vector2f contact(ball.getPosition().x, 1.f);      // floor surface
+  CHECK(near(ball.getVelocityAtPoint(contact).x, 0.f, 0.1f));
+  CHECK(ball.getAngle() > 0.f);
+}
+
+// --- Floor surfaces
+// -----------------------------------------------------------
+
+void test_surface_friction_is_a_constant_deceleration() {
+  Body puck = circle(1.f);
+  puck.setMass(1.f);
+  puck.setVelocity({100.f, 0.f});
+  PhysicsWorld world;
+  world.setGroundGravity(100.f);
+  world.setDefaultSurface(Surface{0.5f, 0.f, 1.f});  // slows 50 px/s^2
+  world.addBody(&puck);
+  for (int i = 0; i < 100; ++i) world.step(0.01f);  // 1 s
+  CHECK(near(puck.getVelocity(), {50.f, 0.f}, 0.01f));
+  CHECK(near(puck.getPosition().x, 75.f, 0.5f));    // 100 * 1 - 0.5 * 50 * 1^2
+  for (int i = 0; i < 110; ++i) world.step(0.01f);  // past the stopping time
+  CHECK(puck.getVelocity() == sf::Vector2f(0.f, 0.f));
+  // 100^2 / (2 * 50), a little short since each step slows before it moves
+  CHECK(near(puck.getPosition().x, 100.f, 1.f));
+  CHECK(near(puck.getSurface().friction, 0.5f));
+
+  // Friction opposes the direction of motion, whatever it is
+  puck.setVelocity({-30.f, 40.f});
+  world.step(0.01f);
+  CHECK(near(puck.getVelocity(), {-29.7f, 39.6f}, 0.01f));  // 50 * 0.6, 0.8
+}
+
+void test_ice_slides_further_than_metal() {
+  auto slide = [](const Surface &surface) {
+    Body crate = box({2.f, 2.f});
+    crate.setMass(1.f);
+    crate.setVelocity({100.f, 0.f});
+    PhysicsWorld world;
+    world.setDefaultSurface(surface);
+    world.addBody(&crate);
+    for (int i = 0; i < 600; ++i) world.step(1.f / 60.f);
+    return crate.getPosition().x;
+  };
+  const float on_ice = slide(Surface::ice());
+  const float on_metal = slide(Surface::metal());
+  const float on_concrete = slide(Surface::concrete());
+  const float on_sand = slide(Surface::sand());
+  CHECK(on_ice > 5.f * on_metal);
+  CHECK(on_metal > on_concrete);
+  CHECK(on_concrete > on_sand);  // sand adds drag on top of friction
+  CHECK(slide(Surface::none()) > on_ice);
+}
+
+void test_surface_drag_is_exponential() {
+  Body crate = box({2.f, 2.f});
+  crate.setMass(1.f);
+  crate.setVelocity({100.f, 0.f});
+  crate.setAngularVelocity(10.f);
+  PhysicsWorld world;
+  world.setDefaultSurface(Surface{0.f, 1.f, 1.f});
+  world.addBody(&crate);
+  world.step(1.f);
+  CHECK(near(crate.getVelocity().x, 100.f * std::exp(-1.f), 0.01f));
+  CHECK(near(crate.getAngularVelocity(), 10.f * std::exp(-1.f), 0.01f));
+}
+
+void test_surface_friction_stops_spinning() {
+  Body disc = circle(2.f);
+  disc.setMass(1.f);
+  disc.setAngularVelocity(-10.f);
+  PhysicsWorld world;
+  world.setGroundGravity(100.f);
+  world.setDefaultSurface(Surface{0.3f, 0.f, 1.f});
+  world.addBody(&disc);
+  world.step(0.1f);
+  // (4/3) * 0.3 * 100 / 2 = 20 rad/s^2, opposing the spin
+  CHECK(near(disc.getAngularVelocity(), -8.f, 0.01f));
+  for (int i = 0; i < 10; ++i) world.step(0.1f);
+  CHECK(disc.getAngularVelocity() == 0.f);
+
+  // A fixed-rotation body keeps a hand-set spin (no inertia to act on)
+  Body spinner = circle(2.f);
+  spinner.setMass(1.f);
+  spinner.setFixedRotation(true);
+  spinner.setAngularVelocity(3.f);
+  world.addBody(&spinner);
+  world.step(0.1f);
+  CHECK(near(spinner.getAngularVelocity(), 3.f));
+}
+
+void test_surface_sampler_picks_floor_by_position() {
+  Body left = circle(1.f);
+  left.setMass(1.f);
+  left.setPosition({-10.f, 0.f});
+  left.setVelocity({0.f, 60.f});
+  Body right = circle(1.f);
+  right.setMass(1.f);
+  right.setPosition({10.f, 0.f});
+  right.setVelocity({0.f, 60.f});
+
+  PhysicsWorld world;
+  world.setGroundGravity(100.f);
+  world.setDefaultSurface(Surface::none());
+  world.setSurfaceSampler([](sf::Vector2f p) {
+    return p.x < 0.f ? Surface::ice() : Surface::concrete();
+  });
+  world.addBody(&left);
+  world.addBody(&right);
+  for (int i = 0; i < 60; ++i) world.step(1.f / 60.f);
+  CHECK(near(left.getSurface().grip, Surface::ice().grip));
+  CHECK(near(right.getSurface().grip, Surface::concrete().grip));
+  CHECK(left.getVelocity().y > right.getVelocity().y);
+  CHECK(right.getVelocity().y == 0.f);  // 60 px/s^2 of friction for 1 s
+}
+
+void test_surfaces_skip_static_and_airborne_bodies() {
+  Body wall = box({4.f, 4.f});  // static but moving kinematically
+  wall.setVelocity({10.f, 0.f});
+  Body bullet = circle(0.2f);
+  bullet.setMass(0.1f);
+  bullet.setOnGround(false);
+  bullet.setVelocity({500.f, 0.f});
+  PhysicsWorld world;
+  world.setDefaultSurface(Surface::concrete());
+  world.addBody(&wall);
+  world.addBody(&bullet);
+  world.step(0.1f);
+  CHECK(near(wall.getVelocity(), {10.f, 0.f}));
+  CHECK(near(bullet.getVelocity(), {500.f, 0.f}));
+  CHECK(near(bullet.getSurface().friction, 0.f));  // never sampled
+}
+
+// --- Performance characteristics
+// ----------------------------------------------
+
+void test_density_sets_mass_from_area() {
+  Body disc = circle(2.f);
+  disc.setDensity(0.5f);
+  CHECK(near(disc.getMass(), 0.5f * 3.14159265f * 4.f));
+  Body plank = box({10.f, 2.f});
+  plank.setDensity(0.5f);
+  CHECK(near(plank.getMass(), 10.f));
+  CHECK(near(plank.getInertia(), 10.f * (100.f + 4.f) / 12.f));
+}
+
+void test_broad_phase_scales_with_overlaps_not_bodies() {
+  // 100 circles spread out along x: no bounding boxes overlap, so there must
+  // be no pair work at all, however many bodies there are.
+  std::vector<Body> grid;
+  grid.reserve(100);
+  for (int i = 0; i < 100; ++i) {
+    grid.emplace_back(Shape::circle(1.f));
+    grid.back().setPosition({i * 3.f, (i % 10) * 10.f});
+    grid.back().setMass(1.f);
+    grid.back().setVelocity({1.f, 0.f});
+  }
+  PhysicsWorld world;
+  for (Body &b : grid) world.addBody(&b);
+  world.step(0.001f);
+  const physics::Stats &s = world.getStats();
+  CHECK(s.bodies == 100);
+  CHECK(s.broadphase_pairs == 0);
+  CHECK(s.narrowphase_tests == 0);
+  CHECK(s.contacts == 0);
+  CHECK(s.step_time_us >= 0.f);
+
+  // A column of bodies: every pair overlaps on x, but the y check rejects
+  // all of them before any exact test runs.
+  std::vector<Body> column;
+  column.reserve(50);
+  for (int i = 0; i < 50; ++i) {
+    column.emplace_back(Shape::box({2.f, 2.f}));
+    column.back().setPosition({0.f, i * 10.f});
+    column.back().setMass(1.f);
+    column.back().setVelocity({0.f, 1.f});
+  }
+  PhysicsWorld tall;
+  for (Body &b : column) tall.addBody(&b);
+  tall.step(0.001f);
+  CHECK(tall.getStats().broadphase_pairs == 50 * 49 / 2);
+  CHECK(tall.getStats().narrowphase_tests == 0);
+}
+
+void test_resting_pairs_are_not_retested() {
+  Body a = box({2.f, 2.f});
+  Body b = box({2.f, 2.f});
+  b.setPosition({1.9f, 0.f});  // overlapping
+  a.setMass(1.f);
+  b.setMass(1.f);
+  a.setRestitution(0.f);  // so a hit leaves them touching, not bouncing apart
+  b.setRestitution(0.f);
+  PhysicsWorld world;
+  world.addBody(&a);
+  world.addBody(&b);
+
+  // Freshly placed bodies are tested and pushed apart even though they have
+  // no velocity...
+  world.step(0.01f);
+  CHECK(world.getStats().resting_pairs == 0);
+  CHECK(world.getStats().narrowphase_tests == 1);
+  CHECK(b.getPosition().x > 1.9f);
+  // ...and once separated and still for a couple of steps they are skipped
+  for (int i = 0; i < 10; ++i) world.step(0.01f);
+  CHECK(world.getStats().resting_pairs == 1);
+  CHECK(world.getStats().narrowphase_tests == 0);
+  CHECK(a.isResting() && b.isResting());
+  const float settled_x = b.getPosition().x;
+
+  // As soon as one moves the pair is live again
+  b.setVelocity({-10.f, 0.f});
+  world.step(0.01f);
+  CHECK(world.getStats().resting_pairs == 0);
+  CHECK(world.getStats().narrowphase_tests == 1);
+  CHECK(world.getStats().contacts == 1);
+  // Equal masses, inelastic: they move on together at half the speed
+  CHECK(near(a.getVelocity().x, -5.f, 0.1f));
+  CHECK(near(b.getVelocity().x, -5.f, 0.1f));
+
+  // wake() forces a re-test, e.g. after teleporting a body
+  a.setVelocity({0.f, 0.f});
+  b.setVelocity({0.f, 0.f});
+  for (int i = 0; i < 10; ++i) world.step(0.01f);
+  CHECK(world.getStats().resting_pairs == 1);
+  b.setPosition({settled_x - 0.5f, 0.f});
+  b.wake();
+  world.step(0.01f);
+  CHECK(world.getStats().narrowphase_tests == 1);
+
+  // Forces count as motion too
+  PhysicsWorld again;
+  Body c = box({2.f, 2.f});
+  Body d = box({2.f, 2.f});
+  d.setPosition({1.9f, 0.f});
+  c.setMass(1.f);
+  d.setMass(1.f);
+  again.addBody(&c);
+  again.addBody(&d);
+  for (int i = 0; i < 10; ++i) again.step(0.01f);  // settle
+  CHECK(again.getStats().resting_pairs == 1);
+  c.applyForce({1.f, 0.f});
+  again.step(0.01f);
+  CHECK(again.getStats().narrowphase_tests == 1);
+
+  // Under gravity nothing is ever considered resting
+  PhysicsWorld falling;
+  falling.setGravity({0.f, 1.f});
+  Body e = box({2.f, 2.f});
+  Body f = box({2.f, 2.f});
+  f.setPosition({1.9f, 0.f});
+  e.setMass(1.f);
+  f.setMass(1.f);
+  falling.addBody(&e);
+  falling.addBody(&f);
+  falling.step(0.01f);
+  CHECK(falling.getStats().resting_pairs == 0);
+  CHECK(falling.getStats().narrowphase_tests == 1);
+}
+
+class ExternalAngleBody : public Body {
+ public:
+  explicit ExternalAngleBody(const Shape &shape) : Body(shape) {}
+  float getAngle() const override { return external_angle; }
+  void setAngle(float radians) override { external_angle = radians; }
+  float external_angle = 0.f;
+};
+
+void test_external_angle_is_used() {
+  ExternalAngleBody b(Shape::box({2.f, 2.f}));
+  b.setMass(1.f);
+  b.setAngularVelocity(1.f);
+  b.external_angle = kPi / 4.f;  // starts as a diamond
+  CHECK(near(b.getAABB().size.x, 2.f * std::sqrt(2.f)));
+  PhysicsWorld world;
+  world.addBody(&b);
+  world.step(0.5f);
+  CHECK(near(b.external_angle, kPi / 4.f + 0.5f));
 }
 
 // --- Body -------------------------------------------------------------------
@@ -514,6 +1017,25 @@ int main() {
   test_circle_vs_box();
   test_box_vs_box();
   test_aabb_overlap();
+  test_rotated_box_bounds();
+  test_circle_vs_rotated_box();
+  test_box_vs_box_contact_points();
+  test_inertia();
+  test_velocity_at_point_and_forces();
+  test_torque_and_angular_damping();
+  test_off_centre_hit_spins_box();
+  test_fixed_rotation_body_does_not_spin();
+  test_ball_rolls_on_floor();
+  test_external_angle_is_used();
+  test_density_sets_mass_from_area();
+  test_broad_phase_scales_with_overlaps_not_bodies();
+  test_resting_pairs_are_not_retested();
+  test_surface_friction_is_a_constant_deceleration();
+  test_ice_slides_further_than_metal();
+  test_surface_drag_is_exponential();
+  test_surface_friction_stops_spinning();
+  test_surface_sampler_picks_floor_by_position();
+  test_surfaces_skip_static_and_airborne_bodies();
   test_body_properties();
   test_body_collide_and_snap();
   test_external_position_is_used();

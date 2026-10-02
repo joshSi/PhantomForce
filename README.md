@@ -56,7 +56,9 @@ cd build
 ```
 
 Move with `WASD`, aim with the mouse, `Esc` pauses and `Space` toggles the
-collision debug overlay (collision shapes and contact normals).
+debug overlay: collision shapes, contact points and normals, plus a
+performance read-out (FPS, frame time, physics time per frame and per step,
+body / pair / test / contact / resting counts and draw calls).
 
 ## Test
 
@@ -69,30 +71,63 @@ ctest --test-dir build --output-on-failure
 
 Pass `-DPHANTOMFORCE_BUILD_TESTS=OFF` when configuring to skip building it.
 
+`physics_bench` (also run by `ctest`) prints the average and worst step time
+of a few scenarios: hundreds to a thousand bodies bouncing around an arena,
+a crate pyramid settling under gravity, and a thousand crates at rest:
+
+```
+./build/physics_bench
+```
+
 ## Physics
 
 Gameplay objects are simulated by a small 2D rigid-body engine in
 `include/physics/`:
 
-- `physics::Body` – a circle or axis-aligned box with mass, velocity,
-  restitution (bounciness), friction, linear damping and a force accumulator.
+- `physics::Body` – a circle or (rotatable) box with mass (or density, so
+  bigger objects of a material are heavier), velocity,
+  restitution (bounciness), friction, linear damping and a force accumulator,
+  plus angular velocity, moment of inertia, torque and angular damping.
   A mass of `0` makes a body static; a static body with a velocity acts as a
-  kinematic mover.
+  kinematic mover. `setFixedRotation(true)` keeps collisions from spinning a
+  body (the player uses this so it can keep facing the mouse).
 - `physics::PhysicsWorld` – holds bodies (not owned) and advances them with
   `step(dt)`: a sort-and-sweep broad phase on bounding boxes, exact
-  circle/box narrow-phase tests, iterative impulse resolution with
-  restitution and Coulomb friction, then positional correction so bodies do
-  not sink into each other. Optional gravity and a per-contact callback are
-  available for game logic.
+  circle/box narrow-phase tests (separating-axis test with face clipping for
+  rotated boxes) that produce contact points, iterative impulse resolution
+  at those points with restitution and Coulomb friction, then positional
+  correction so bodies do not sink into each other. Hits away from the centre
+  of mass spin bodies, friction makes balls roll, and linear and angular
+  momentum are conserved. Optional gravity and a per-contact callback are
+  available for game logic. Without gravity, pairs of bodies that have
+  been sitting still are skipped by the broad phase, so a scene full of
+  resting objects costs almost nothing; `getStats()` reports the work done
+  by the last step.
+- `physics::Surface` – the floor under a body in a top-down world: Coulomb
+  friction (a constant deceleration, so ice gives long slides and concrete
+  stops things fast), drag (extra decay for sand or mud) and grip (how much
+  traction the player gets). Presets: `none`, `metal`, `concrete`, `ice`,
+  `sand`. The world samples the surface under each body every step through
+  `setSurfaceSampler`; the game reads the background tile under each body
+  (ice and sand tiles live in `assets/background.png`). Bodies that are not
+  on the floor (projectiles) opt out with `setOnGround(false)`.
 - `Object` (and its `Circle` / `Rectangle` subclasses) is an `sf::Sprite`
-  that is also a `physics::Body`; the sprite's position is the body's
-  position. `Player` is a dynamic `Circle` that turns input into acceleration.
+  that is also a `physics::Body`; the sprite's position and rotation are the
+  body's position and angle. `Rectangle(texture, size)` tiles the texture
+  over the collider, so a wall of crates is one repeated crate texture. `Player` is a dynamic `Circle` that turns input
+  into acceleration.
 
-Positions are in pixels and time in seconds. The game steps the world on a
-fixed 120 Hz timestep independent of the render frame rate.
+Positions are in pixels, angles in radians (clockwise on screen) and time in
+seconds. The game steps the world on a fixed 120 Hz timestep independent of
+the render frame rate.
 
 ```cpp
 physics::PhysicsWorld world;          // no gravity: top-down game
+world.setDefaultSurface(physics::Surface::metal());
+world.setSurfaceSampler([&](sf::Vector2f p) {
+  return tile_map.getTile(p) == kIceTile ? physics::Surface::ice()
+                                         : world.getDefaultSurface();
+});
 Rectangle* wall = new Rectangle(tex, {40.f, 400.f});   // mass 0 => static
 Circle* ball = new Circle(tex, 20.f);
 ball->setMass(3.f);
