@@ -13,7 +13,8 @@ struct MoveStats {
 };
 
 // The player is a dynamic circular body. update() turns input into
-// acceleration; the PhysicsWorld then moves it and resolves collisions.
+// acceleration, scaled by the grip of the floor it is standing on; the
+// PhysicsWorld then moves it and resolves collisions.
 class Player : public Circle {
  public:
   // Bits of the input mask passed to update()

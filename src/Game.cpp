@@ -61,13 +61,11 @@ int runGame(int framerate = 60) {
   m_sprite_layer[1].push_back(play);
   m_world.addBody(play);
 
-  // A heavy ball the player can shove around
+  // A heavy ball the player can shove around (the floor's friction slows it)
   Circle* c = new Circle(tex, 20.f);
   c->setPosition(sf::Vector2f(160, 40));
   c->setMass(3.f);
   c->setRestitution(0.6f);
-  c->setLinearDamping(1.5f);
-  c->setAngularDamping(1.5f);
   m_object_list.push_back(c);
   m_sprite_layer[2].push_back(c);
   m_world.addBody(c);
@@ -88,12 +86,30 @@ int runGame(int framerate = 60) {
     crate->setPosition(pos);
     crate->setMass(1.f);
     crate->setFriction(0.4f);
-    crate->setLinearDamping(3.f);
-    crate->setAngularDamping(3.f);
     m_object_list.push_back(crate);
     m_sprite_layer[2].push_back(crate);
     m_world.addBody(crate);
   }
+
+  // Floor surfaces: an indoor metal floor by default, with a patch of ice and
+  // a patch of sand. The patches are tinted so they can be seen.
+  struct TerrainZone {
+    sf::FloatRect area;
+    physics::Surface surface;
+    sf::Color tint;
+  };
+  const TerrainZone terrain_zones[] = {
+      {sf::FloatRect({130.f, 60.f}, {140.f, 110.f}), physics::Surface::ice(),
+       sf::Color(120, 200, 255, 70)},
+      {sf::FloatRect({0.f, 180.f}, {80.f, 120.f}), physics::Surface::sand(),
+       sf::Color(230, 190, 90, 90)},
+  };
+  m_world.setDefaultSurface(physics::Surface::metal());
+  m_world.setSurfaceSampler([&](sf::Vector2f p) {
+    for (const TerrainZone& zone : terrain_zones)
+      if (zone.area.contains(p)) return zone.surface;
+    return m_world.getDefaultSurface();
+  });
 
   TileMap background_map;
   m_p = new int[10000];
@@ -134,6 +150,14 @@ int runGame(int framerate = 60) {
     m_window.setView(view);  // Use camera view
     background_map.loadVertexChunk(view.getCenter());
     m_window.draw(background_map);
+
+    // Terrain patches
+    for (const TerrainZone& zone : terrain_zones) {
+      sf::RectangleShape patch(zone.area.size);
+      patch.setPosition(zone.area.position);
+      patch.setFillColor(zone.tint);
+      m_window.draw(patch);
+    }
 
     // Draw layers
     for (int i = 3; i >= 1; i--) {

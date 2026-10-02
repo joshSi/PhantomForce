@@ -7,6 +7,7 @@
 #include "physics/Body.h"
 #include "physics/Collision.h"
 #include "physics/PhysicsWorld.h"
+#include "physics/Surface.h"
 
 namespace {
 
@@ -33,6 +34,7 @@ using physics::CircleCollider;
 using physics::Manifold;
 using physics::PhysicsWorld;
 using physics::Shape;
+using physics::Surface;
 
 Body circle(float radius) { return Body(Shape::circle(radius)); }
 Body box(sf::Vector2f size) { return Body(Shape::box(size)); }
@@ -361,6 +363,132 @@ void test_ball_rolls_on_floor() {
   const sf::Vector2f contact(ball.getPosition().x, 1.f);      // floor surface
   CHECK(near(ball.getVelocityAtPoint(contact).x, 0.f, 0.1f));
   CHECK(ball.getAngle() > 0.f);
+}
+
+// --- Floor surfaces
+// -----------------------------------------------------------
+
+void test_surface_friction_is_a_constant_deceleration() {
+  Body puck = circle(1.f);
+  puck.setMass(1.f);
+  puck.setVelocity({100.f, 0.f});
+  PhysicsWorld world;
+  world.setGroundGravity(100.f);
+  world.setDefaultSurface(Surface{0.5f, 0.f, 1.f});  // slows 50 px/s^2
+  world.addBody(&puck);
+  for (int i = 0; i < 100; ++i) world.step(0.01f);  // 1 s
+  CHECK(near(puck.getVelocity(), {50.f, 0.f}, 0.01f));
+  CHECK(near(puck.getPosition().x, 75.f, 0.5f));    // 100 * 1 - 0.5 * 50 * 1^2
+  for (int i = 0; i < 110; ++i) world.step(0.01f);  // past the stopping time
+  CHECK(puck.getVelocity() == sf::Vector2f(0.f, 0.f));
+  // 100^2 / (2 * 50), a little short since each step slows before it moves
+  CHECK(near(puck.getPosition().x, 100.f, 1.f));
+  CHECK(near(puck.getSurface().friction, 0.5f));
+
+  // Friction opposes the direction of motion, whatever it is
+  puck.setVelocity({-30.f, 40.f});
+  world.step(0.01f);
+  CHECK(near(puck.getVelocity(), {-29.7f, 39.6f}, 0.01f));  // 50 * 0.6, 0.8
+}
+
+void test_ice_slides_further_than_metal() {
+  auto slide = [](const Surface &surface) {
+    Body crate = box({2.f, 2.f});
+    crate.setMass(1.f);
+    crate.setVelocity({100.f, 0.f});
+    PhysicsWorld world;
+    world.setDefaultSurface(surface);
+    world.addBody(&crate);
+    for (int i = 0; i < 600; ++i) world.step(1.f / 60.f);
+    return crate.getPosition().x;
+  };
+  const float on_ice = slide(Surface::ice());
+  const float on_metal = slide(Surface::metal());
+  const float on_concrete = slide(Surface::concrete());
+  const float on_sand = slide(Surface::sand());
+  CHECK(on_ice > 5.f * on_metal);
+  CHECK(on_metal > on_concrete);
+  CHECK(on_concrete > on_sand);  // sand adds drag on top of friction
+  CHECK(slide(Surface::none()) > on_ice);
+}
+
+void test_surface_drag_is_exponential() {
+  Body crate = box({2.f, 2.f});
+  crate.setMass(1.f);
+  crate.setVelocity({100.f, 0.f});
+  crate.setAngularVelocity(10.f);
+  PhysicsWorld world;
+  world.setDefaultSurface(Surface{0.f, 1.f, 1.f});
+  world.addBody(&crate);
+  world.step(1.f);
+  CHECK(near(crate.getVelocity().x, 100.f * std::exp(-1.f), 0.01f));
+  CHECK(near(crate.getAngularVelocity(), 10.f * std::exp(-1.f), 0.01f));
+}
+
+void test_surface_friction_stops_spinning() {
+  Body disc = circle(2.f);
+  disc.setMass(1.f);
+  disc.setAngularVelocity(-10.f);
+  PhysicsWorld world;
+  world.setGroundGravity(100.f);
+  world.setDefaultSurface(Surface{0.3f, 0.f, 1.f});
+  world.addBody(&disc);
+  world.step(0.1f);
+  // (4/3) * 0.3 * 100 / 2 = 20 rad/s^2, opposing the spin
+  CHECK(near(disc.getAngularVelocity(), -8.f, 0.01f));
+  for (int i = 0; i < 10; ++i) world.step(0.1f);
+  CHECK(disc.getAngularVelocity() == 0.f);
+
+  // A fixed-rotation body keeps a hand-set spin (no inertia to act on)
+  Body spinner = circle(2.f);
+  spinner.setMass(1.f);
+  spinner.setFixedRotation(true);
+  spinner.setAngularVelocity(3.f);
+  world.addBody(&spinner);
+  world.step(0.1f);
+  CHECK(near(spinner.getAngularVelocity(), 3.f));
+}
+
+void test_surface_sampler_picks_floor_by_position() {
+  Body left = circle(1.f);
+  left.setMass(1.f);
+  left.setPosition({-10.f, 0.f});
+  left.setVelocity({0.f, 60.f});
+  Body right = circle(1.f);
+  right.setMass(1.f);
+  right.setPosition({10.f, 0.f});
+  right.setVelocity({0.f, 60.f});
+
+  PhysicsWorld world;
+  world.setGroundGravity(100.f);
+  world.setDefaultSurface(Surface::none());
+  world.setSurfaceSampler([](sf::Vector2f p) {
+    return p.x < 0.f ? Surface::ice() : Surface::concrete();
+  });
+  world.addBody(&left);
+  world.addBody(&right);
+  for (int i = 0; i < 60; ++i) world.step(1.f / 60.f);
+  CHECK(near(left.getSurface().grip, Surface::ice().grip));
+  CHECK(near(right.getSurface().grip, Surface::concrete().grip));
+  CHECK(left.getVelocity().y > right.getVelocity().y);
+  CHECK(right.getVelocity().y == 0.f);  // 60 px/s^2 of friction for 1 s
+}
+
+void test_surfaces_skip_static_and_airborne_bodies() {
+  Body wall = box({4.f, 4.f});  // static but moving kinematically
+  wall.setVelocity({10.f, 0.f});
+  Body bullet = circle(0.2f);
+  bullet.setMass(0.1f);
+  bullet.setOnGround(false);
+  bullet.setVelocity({500.f, 0.f});
+  PhysicsWorld world;
+  world.setDefaultSurface(Surface::concrete());
+  world.addBody(&wall);
+  world.addBody(&bullet);
+  world.step(0.1f);
+  CHECK(near(wall.getVelocity(), {10.f, 0.f}));
+  CHECK(near(bullet.getVelocity(), {500.f, 0.f}));
+  CHECK(near(bullet.getSurface().friction, 0.f));  // never sampled
 }
 
 class ExternalAngleBody : public Body {
@@ -773,6 +901,12 @@ int main() {
   test_fixed_rotation_body_does_not_spin();
   test_ball_rolls_on_floor();
   test_external_angle_is_used();
+  test_surface_friction_is_a_constant_deceleration();
+  test_ice_slides_further_than_metal();
+  test_surface_drag_is_exponential();
+  test_surface_friction_stops_spinning();
+  test_surface_sampler_picks_floor_by_position();
+  test_surfaces_skip_static_and_airborne_bodies();
   test_body_properties();
   test_body_collide_and_snap();
   test_external_position_is_used();

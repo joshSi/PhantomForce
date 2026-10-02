@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "physics/Collision.h"
+#include "physics/Surface.h"
 
 namespace physics {
 
@@ -26,6 +27,9 @@ struct Shape {
   sf::FloatRect aabb(sf::Vector2f center, float angle = 0.f) const;
   // Moment of inertia about the centre for a body of the given mass.
   float inertia(float mass) const;
+  // Typical distance from the centre to the ground contact area, used to
+  // turn floor friction into a torque on spinning bodies.
+  float groundRadius() const;
 };
 
 // Narrow-phase test between two placed shapes. On success `out.normal` points
@@ -122,6 +126,14 @@ class Body {
   void setAngularDamping(float damping) { m_angular_damping = damping; }
   float getAngularDamping() const { return m_angular_damping; }
 
+  // Whether the body rests on the floor and feels its surface (friction,
+  // drag, grip). Turn off for projectiles and anything airborne.
+  void setOnGround(bool on_ground) { m_on_ground = on_ground; }
+  bool isOnGround() const { return m_on_ground; }
+  // The floor under the body, refreshed by the world every step.
+  const Surface& getSurface() const { return m_surface; }
+  void setSurface(const Surface& surface) { m_surface = surface; }
+
   // Accumulates a force (mass * pixels / s^2) through the centre of mass to
   // apply during the next step.
   void applyForce(const sf::Vector2f& force) { m_force += force; }
@@ -158,6 +170,8 @@ class Body {
   float m_friction = 0.3f;
   float m_damping = 0.f;
   float m_angular_damping = 0.f;
+  bool m_on_ground = true;
+  Surface m_surface;
 
  private:
   void updateInertia();

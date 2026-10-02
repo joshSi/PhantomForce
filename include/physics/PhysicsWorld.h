@@ -6,6 +6,7 @@
 
 #include "physics/Body.h"
 #include "physics/Collision.h"
+#include "physics/Surface.h"
 
 namespace physics {
 
@@ -28,6 +29,7 @@ struct Contact {
 //   2. decides which contacts bounce from the velocities before gravity is
 //      applied, so resting bodies never pick up energy from gravity,
 //   3. integrates forces, torques, gravity and damping into velocities,
+//      then applies the floor surface under each body (friction and drag),
 //   4. resolves every contact point with restitution and friction impulses,
 //      which also spin the bodies when the point is off centre,
 //   5. integrates velocities into positions and angles,
@@ -40,6 +42,8 @@ class PhysicsWorld {
  public:
   using ContactCallback =
       std::function<void(Body &a, Body &b, const Manifold &manifold)>;
+  // Returns the floor surface at a world position.
+  using SurfaceSampler = std::function<Surface(sf::Vector2f position)>;
 
   void addBody(Body *body);
   void removeBody(Body *body);
@@ -62,6 +66,23 @@ class PhysicsWorld {
     m_on_contact = std::move(callback);
   }
 
+  // --- Floor surfaces (top-down games) --------------------------------------
+
+  // Surface used wherever the sampler is unset. Defaults to Surface::none(),
+  // which leaves bodies coasting exactly as before.
+  void setDefaultSurface(const Surface &surface) {
+    m_default_surface = surface;
+  }
+  const Surface &getDefaultSurface() const { return m_default_surface; }
+  // Looks up the surface under each body every step, e.g. from a tile map.
+  void setSurfaceSampler(SurfaceSampler sampler) {
+    m_surface_sampler = std::move(sampler);
+  }
+  // Acceleration pressing bodies onto the floor, in pixels / s^2. Floor
+  // friction decelerates a body by surface.friction * ground gravity.
+  void setGroundGravity(float gravity) { m_ground_gravity = gravity; }
+  float getGroundGravity() const { return m_ground_gravity; }
+
   // Advances the simulation by dt seconds.
   void step(float dt);
 
@@ -80,6 +101,7 @@ class PhysicsWorld {
   void findContacts();
   void prepareContacts(float dt);
   void integrateForces(float dt);
+  void applySurfaces(float dt);
   void resolveContact(const Contact &contact) const;
   void integrateVelocities(float dt);
   void correctPositions() const;
@@ -88,6 +110,9 @@ class PhysicsWorld {
   std::vector<Contact> m_contacts;
   std::vector<Proxy> m_proxies;  // scratch space for the broad phase
   sf::Vector2f m_gravity{0.f, 0.f};
+  float m_ground_gravity = 300.f;  // ~9.8 m/s^2 at 30 pixels per metre
+  Surface m_default_surface;
+  SurfaceSampler m_surface_sampler;
   unsigned m_iterations = 8;
   ContactCallback m_on_contact;
 };

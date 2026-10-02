@@ -17,6 +17,7 @@ set(
   include/physics/Body.h
   include/physics/Collision.h
   include/physics/PhysicsWorld.h
+  include/physics/Surface.h
 )
 set(
   SOURCES

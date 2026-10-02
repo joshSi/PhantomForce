@@ -15,8 +15,11 @@ Player::Player(sf::Texture& tex, MoveStats* s, float r)
 }
 
 void Player::update(uint8_t input, float dt, bool sprint) {
-  const float boost = sprint ? kSprintMultiplier : 1.f;
-  setLinearDamping(m_stat->fric);
+  // Traction depends on the floor: on ice the player can neither push off
+  // nor dig in to stop.
+  const float grip = getSurface().grip;
+  const float boost = (sprint ? kSprintMultiplier : 1.f) * grip;
+  setLinearDamping(m_stat->fric * grip);
 
   const sf::Vector2f dir(static_cast<float>((input & kRight) != 0) -
                              static_cast<float>((input & kLeft) != 0),
@@ -25,7 +28,7 @@ void Player::update(uint8_t input, float dt, bool sprint) {
   if (dir != sf::Vector2f(0.f, 0.f))
     m_velocity += dir.normalized() * (m_stat->accel * boost * dt);
 
-  const float max_spd = m_stat->max_spd * boost;
+  const float max_spd = m_stat->max_spd * (sprint ? kSprintMultiplier : 1.f);
   if (m_velocity.lengthSquared() > max_spd * max_spd)
     m_velocity = m_velocity.normalized() * max_spd;
 }

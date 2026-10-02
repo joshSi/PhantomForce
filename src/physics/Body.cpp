@@ -39,6 +39,11 @@ float Shape::inertia(float mass) const {
   return mass * (size.x * size.x + size.y * size.y) / 12.f;
 }
 
+float Shape::groundRadius() const {
+  if (type == Type::Circle) return radius;
+  return (half_size.x + half_size.y) / 2.f;
+}
+
 bool collide(const Shape& a, sf::Vector2f pos_a, float angle_a, const Shape& b,
              sf::Vector2f pos_b, float angle_b, Manifold& out) {
   if (a.type == Shape::Type::Circle) {

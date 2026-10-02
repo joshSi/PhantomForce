@@ -61,6 +61,7 @@ void PhysicsWorld::step(float dt) {
   findContacts();
   prepareContacts(dt);
   integrateForces(dt);
+  applySurfaces(dt);
   for (unsigned i = 0; i < m_iterations; ++i)
     for (const Contact &contact : m_contacts) resolveContact(contact);
   integrateVelocities(dt);
@@ -136,6 +137,46 @@ void PhysicsWorld::integrateForces(float dt) {
     if (velocity.lengthSquared() < kSleepSpeed * kSleepSpeed)
       velocity = {0.f, 0.f};
     if (std::abs(omega) < kSleepAngularSpeed) omega = 0.f;
+    body->setVelocity(velocity);
+    body->setAngularVelocity(omega);
+  }
+}
+
+void PhysicsWorld::applySurfaces(float dt) {
+  for (Body *body : m_bodies) {
+    if (body->isStatic() || !body->isOnGround()) continue;
+    const Surface surface = m_surface_sampler
+                                ? m_surface_sampler(body->getPosition())
+                                : m_default_surface;
+    body->setSurface(surface);
+
+    sf::Vector2f velocity = body->getVelocity();
+    float omega = body->getAngularVelocity();
+
+    // Coulomb friction with the floor: a constant deceleration opposing the
+    // motion, which brings the body to a complete stop.
+    const float slow_down = surface.friction * m_ground_gravity * dt;
+    if (slow_down > 0.f) {
+      const float speed = velocity.length();
+      velocity = speed <= slow_down ? sf::Vector2f(0.f, 0.f)
+                                    : velocity * ((speed - slow_down) / speed);
+      // The same friction acting over the contact area resists spinning. For
+      // a disc the torque works out to (4/3) * mu * g / r.
+      if (body->getInverseInertia() > 0.f) {
+        const float spin_down =
+            4.f / 3.f * slow_down / body->getShape().groundRadius();
+        omega = std::abs(omega) <= spin_down
+                    ? 0.f
+                    : omega - std::copysign(spin_down, omega);
+      }
+    }
+    // Drag from soft or loose ground
+    if (surface.drag > 0.f) {
+      const float keep = std::exp(-surface.drag * dt);
+      velocity *= keep;
+      omega *= keep;
+    }
+
     body->setVelocity(velocity);
     body->setAngularVelocity(omega);
   }

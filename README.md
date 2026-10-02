@@ -89,6 +89,14 @@ Gameplay objects are simulated by a small 2D rigid-body engine in
   of mass spin bodies, friction makes balls roll, and linear and angular
   momentum are conserved. Optional gravity and a per-contact callback are
   available for game logic.
+- `physics::Surface` – the floor under a body in a top-down world: Coulomb
+  friction (a constant deceleration, so ice gives long slides and concrete
+  stops things fast), drag (extra decay for sand or mud) and grip (how much
+  traction the player gets). Presets: `none`, `metal`, `concrete`, `ice`,
+  `sand`. The world samples the surface under each body every step through
+  `setSurfaceSampler`, so terrain can come from a tile map or zones; the game
+  tints an ice patch and a sand patch so they are visible. Bodies that are
+  not on the floor (projectiles) opt out with `setOnGround(false)`.
 - `Object` (and its `Circle` / `Rectangle` subclasses) is an `sf::Sprite`
   that is also a `physics::Body`; the sprite's position and rotation are the
   body's position and angle. `Player` is a dynamic `Circle` that turns input
@@ -100,6 +108,10 @@ the render frame rate.
 
 ```cpp
 physics::PhysicsWorld world;          // no gravity: top-down game
+world.setDefaultSurface(physics::Surface::metal());
+world.setSurfaceSampler([&](sf::Vector2f p) {
+  return ice_patch.contains(p) ? physics::Surface::ice() : world.getDefaultSurface();
+});
 Rectangle* wall = new Rectangle(tex, {40.f, 400.f});   // mass 0 => static
 Circle* ball = new Circle(tex, 20.f);
 ball->setMass(3.f);
