@@ -55,6 +55,53 @@ cd build
 ./PhantomForce
 ```
 
+Move with `WASD`, aim with the mouse, `Esc` pauses and `Space` toggles the
+collision debug overlay (collision shapes and contact normals).
+
+## Test
+
+The physics engine has a unit test suite that runs without a window:
+
+```
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
+
+Pass `-DPHANTOMFORCE_BUILD_TESTS=OFF` when configuring to skip building it.
+
+## Physics
+
+Gameplay objects are simulated by a small 2D rigid-body engine in
+`include/physics/`:
+
+- `physics::Body` – a circle or axis-aligned box with mass, velocity,
+  restitution (bounciness), friction, linear damping and a force accumulator.
+  A mass of `0` makes a body static; a static body with a velocity acts as a
+  kinematic mover.
+- `physics::PhysicsWorld` – holds bodies (not owned) and advances them with
+  `step(dt)`: a sort-and-sweep broad phase on bounding boxes, exact
+  circle/box narrow-phase tests, iterative impulse resolution with
+  restitution and Coulomb friction, then positional correction so bodies do
+  not sink into each other. Optional gravity and a per-contact callback are
+  available for game logic.
+- `Object` (and its `Circle` / `Rectangle` subclasses) is an `sf::Sprite`
+  that is also a `physics::Body`; the sprite's position is the body's
+  position. `Player` is a dynamic `Circle` that turns input into acceleration.
+
+Positions are in pixels and time in seconds. The game steps the world on a
+fixed 120 Hz timestep independent of the render frame rate.
+
+```cpp
+physics::PhysicsWorld world;          // no gravity: top-down game
+Rectangle* wall = new Rectangle(tex, {40.f, 400.f});   // mass 0 => static
+Circle* ball = new Circle(tex, 20.f);
+ball->setMass(3.f);
+ball->setRestitution(0.6f);
+world.addBody(wall);
+world.addBody(ball);
+world.step(1.f / 120.f);
+```
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md)

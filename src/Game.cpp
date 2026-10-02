@@ -1,10 +1,12 @@
 #include "Game.h"
 
 #include <SFML/Graphics.hpp>
+#include <algorithm>
 
 #include "Player.h"
 #include "TileMap.h"
 #include "crate_img.h"
+#include "physics/PhysicsWorld.h"
 #include "platform_utils.h"
 #include "player_img.h"
 #include "utils.h"
@@ -12,13 +14,20 @@
 int runGame(int framerate = 60) {
   const float VIEW_SCALE = 0.25f;
   const unsigned int SMALL_FONT_SIZE = 32;
+  // Physics runs on a fixed timestep (in seconds) independent of the frame
+  // rate; long stalls are clamped so the simulation never tries to catch up
+  // on more than this much time at once.
+  const float PHYSICS_DT = 1.f / 120.f;
+  const float MAX_FRAME_TIME = 0.25f;
+  float physics_accumulator = 0.f;
   GameState game_state = GameState::Menu;
   int* m_p;  // Pointer to dynamically allocated array for tile map data
   sf::Clock m_clock;
   // Up to 4 drawing layers
   std::vector<sf::Sprite*> m_sprite_layer[4];
   std::vector<Object*> m_object_list;
-  uint8_t m_input;
+  physics::PhysicsWorld m_world;  // top-down game: no gravity
+  uint8_t m_input = 0;
   const std::string resourcePath = getResourcePath();
   sf::RenderWindow m_window(sf::VideoMode({1000, 800}), "Phantom Force");
   m_window.setFramerateLimit(framerate);
@@ -27,7 +36,8 @@ int runGame(int framerate = 60) {
   sf::Texture crate_tex;
   sf::Font font;
 
-  MoveStats def({5.0f, 0.5f, 0.8f, 1.0f});
+  // Speeds in pixels per second, acceleration in pixels / s^2, damping in 1/s
+  MoveStats def({300.0f, 1800.0f, 15.0f, 1.0f});
 
   // Viewport of 250 x 200, 1/4 of the original window 1000 x 800
   sf::View view = m_window.getView();
@@ -49,15 +59,38 @@ int runGame(int framerate = 60) {
   Player* play = new Player(tex, &def, 6.f);
   play->setPosition(sf::Vector2f(10, 10));
   m_sprite_layer[1].push_back(play);
-  play->setObjects(&m_object_list);
+  m_world.addBody(play);
+
+  // A heavy ball the player can shove around
   Circle* c = new Circle(tex, 20.f);
   c->setPosition(sf::Vector2f(160, 40));
+  c->setMass(3.f);
+  c->setRestitution(0.6f);
+  c->setLinearDamping(1.5f);
   m_object_list.push_back(c);
   m_sprite_layer[2].push_back(c);
+  m_world.addBody(c);
+
+  // A static wall (mass 0)
   Rectangle* r = new Rectangle(crate_tex, sf::Vector2f(40.f, 400.f));
   r->setPosition(sf::Vector2f(90, 240));
   m_object_list.push_back(r);
   m_sprite_layer[2].push_back(r);
+  m_world.addBody(r);
+
+  // Light crates that slide and pile up against the wall
+  for (const sf::Vector2f& pos :
+       {sf::Vector2f(50.f, 90.f), sf::Vector2f(50.f, 125.f),
+        sf::Vector2f(85.f, 108.f)}) {
+    Rectangle* crate = new Rectangle(crate_tex);
+    crate->setPosition(pos);
+    crate->setMass(1.f);
+    crate->setFriction(0.4f);
+    crate->setLinearDamping(3.f);
+    m_object_list.push_back(crate);
+    m_sprite_layer[2].push_back(crate);
+    m_world.addBody(crate);
+  }
 
   TileMap background_map;
   m_p = new int[10000];
@@ -99,21 +132,19 @@ int runGame(int framerate = 60) {
     background_map.loadVertexChunk(view.getCenter());
     m_window.draw(background_map);
 
-    if (Object::g_draw_collisions) {
-      play->drawCollision(&m_window);
-      for (auto* obj : m_object_list) obj->drawCollision(&m_window);
-    }
-
     // Draw layers
     for (int i = 3; i >= 1; i--) {
       for (auto* sprite : m_sprite_layer[i]) {
         m_window.draw(*sprite);
       }
     }
+
+    // Collision shapes and contact normals on top of the sprites
+    if (Object::g_draw_collisions) m_world.drawDebug(m_window);
   };
 
   while (m_window.isOpen()) {
-    float frame = m_clock.restart().asSeconds() * 60;
+    const float dt = m_clock.restart().asSeconds();
 
     // Global input events
     while (const std::optional event = m_window.pollEvent()) {
@@ -128,16 +159,16 @@ int runGame(int framerate = 60) {
                 event->getIf<sf::Event::KeyPressed>()) {
           switch (keyPressed->scancode) {
             case sf::Keyboard::Scancode::A:
-              m_input |= 0b00000010;  // Set bit 1 (left)
+              m_input |= Player::kLeft;
               break;
             case sf::Keyboard::Scancode::D:
-              m_input |= 0b00000001;  // Set bit 0 (right)
+              m_input |= Player::kRight;
               break;
             case sf::Keyboard::Scancode::W:
-              m_input |= 0b00001000;  // Set bit 3 (up)
+              m_input |= Player::kUp;
               break;
             case sf::Keyboard::Scancode::S:
-              m_input |= 0b00000100;  // Set bit 2 (down)
+              m_input |= Player::kDown;
               break;
             case sf::Keyboard::Scancode::Space:
               Object::g_draw_collisions = !Object::g_draw_collisions;
@@ -149,16 +180,16 @@ int runGame(int framerate = 60) {
                        event->getIf<sf::Event::KeyReleased>()) {
           switch (keyReleased->scancode) {
             case sf::Keyboard::Scancode::A:
-              m_input &= ~0b00000010;  // Reset bit 1 (left)
+              m_input &= ~Player::kLeft;
               break;
             case sf::Keyboard::Scancode::D:
-              m_input &= ~0b00000001;  // Reset bit 0 (right)
+              m_input &= ~Player::kRight;
               break;
             case sf::Keyboard::Scancode::W:
-              m_input &= ~0b00001000;  // Reset bit 3 (up)
+              m_input &= ~Player::kUp;
               break;
             case sf::Keyboard::Scancode::S:
-              m_input &= ~0b00000100;  // Reset bit 2 (down)
+              m_input &= ~Player::kDown;
               break;
             [[unlikely]] case sf::Keyboard::Scancode::Escape:
               if (game_state == GameState::Paused)
@@ -188,6 +219,14 @@ int runGame(int framerate = 60) {
 
     // Update logic
     if (game_state == GameState::Playing) {
+      // Step the simulation in fixed increments
+      physics_accumulator += std::min(dt, MAX_FRAME_TIME);
+      while (physics_accumulator >= PHYSICS_DT) {
+        play->update(m_input, PHYSICS_DT);
+        m_world.step(PHYSICS_DT);
+        physics_accumulator -= PHYSICS_DT;
+      }
+
       sf::Vector2f mouse_pos =
           m_window.mapPixelToCoords(sf::Mouse::getPosition(m_window), view);
       sf::Vector2f player_pos = play->getPosition();
@@ -198,8 +237,7 @@ int runGame(int framerate = 60) {
                             (3 * player_pos.y + mouse_pos.y) / 4.0f);
       view.setCenter(max(v_center, minCenter));
 
-      // Move Player
-      play->move(sf::Vector2f(3, 3), frame, false, m_input);
+      // Face the mouse
       play->setRotation(sf::degrees(play_dir));
     }
 
@@ -240,6 +278,7 @@ int runGame(int framerate = 60) {
     m_window.display();
   }
   delete[] m_p;
+  m_world.clear();
   delete play;
 
   for (auto* obj : m_object_list) {
