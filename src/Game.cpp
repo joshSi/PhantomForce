@@ -67,6 +67,7 @@ int runGame(int framerate = 60) {
   c->setMass(3.f);
   c->setRestitution(0.6f);
   c->setLinearDamping(1.5f);
+  c->setAngularDamping(1.5f);
   m_object_list.push_back(c);
   m_sprite_layer[2].push_back(c);
   m_world.addBody(c);
@@ -78,7 +79,7 @@ int runGame(int framerate = 60) {
   m_sprite_layer[2].push_back(r);
   m_world.addBody(r);
 
-  // Light crates that slide and pile up against the wall (which spans
+  // Light crates that slide, spin and pile up against the wall (which spans
   // x = 70..110, so they all start just clear of it)
   for (const sf::Vector2f& pos :
        {sf::Vector2f(50.f, 90.f), sf::Vector2f(50.f, 125.f),
@@ -88,6 +89,7 @@ int runGame(int framerate = 60) {
     crate->setMass(1.f);
     crate->setFriction(0.4f);
     crate->setLinearDamping(3.f);
+    crate->setAngularDamping(3.f);
     m_object_list.push_back(crate);
     m_sprite_layer[2].push_back(crate);
     m_world.addBody(crate);

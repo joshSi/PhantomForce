@@ -74,22 +74,29 @@ Pass `-DPHANTOMFORCE_BUILD_TESTS=OFF` when configuring to skip building it.
 Gameplay objects are simulated by a small 2D rigid-body engine in
 `include/physics/`:
 
-- `physics::Body` – a circle or axis-aligned box with mass, velocity,
-  restitution (bounciness), friction, linear damping and a force accumulator.
+- `physics::Body` – a circle or (rotatable) box with mass, velocity,
+  restitution (bounciness), friction, linear damping and a force accumulator,
+  plus angular velocity, moment of inertia, torque and angular damping.
   A mass of `0` makes a body static; a static body with a velocity acts as a
-  kinematic mover.
+  kinematic mover. `setFixedRotation(true)` keeps collisions from spinning a
+  body (the player uses this so it can keep facing the mouse).
 - `physics::PhysicsWorld` – holds bodies (not owned) and advances them with
   `step(dt)`: a sort-and-sweep broad phase on bounding boxes, exact
-  circle/box narrow-phase tests, iterative impulse resolution with
-  restitution and Coulomb friction, then positional correction so bodies do
-  not sink into each other. Optional gravity and a per-contact callback are
+  circle/box narrow-phase tests (separating-axis test with face clipping for
+  rotated boxes) that produce contact points, iterative impulse resolution
+  at those points with restitution and Coulomb friction, then positional
+  correction so bodies do not sink into each other. Hits away from the centre
+  of mass spin bodies, friction makes balls roll, and linear and angular
+  momentum are conserved. Optional gravity and a per-contact callback are
   available for game logic.
 - `Object` (and its `Circle` / `Rectangle` subclasses) is an `sf::Sprite`
-  that is also a `physics::Body`; the sprite's position is the body's
-  position. `Player` is a dynamic `Circle` that turns input into acceleration.
+  that is also a `physics::Body`; the sprite's position and rotation are the
+  body's position and angle. `Player` is a dynamic `Circle` that turns input
+  into acceleration.
 
-Positions are in pixels and time in seconds. The game steps the world on a
-fixed 120 Hz timestep independent of the render frame rate.
+Positions are in pixels, angles in radians (clockwise on screen) and time in
+seconds. The game steps the world on a fixed 120 Hz timestep independent of
+the render frame rate.
 
 ```cpp
 physics::PhysicsWorld world;          // no gravity: top-down game

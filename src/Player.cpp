@@ -7,6 +7,8 @@ constexpr float kSprintMultiplier = 1.5f;
 Player::Player(sf::Texture& tex, MoveStats* s, float r)
     : sf::Sprite(tex), Circle(tex, r), m_stat(s) {
   setMass(1.f);
+  setFixedRotation(
+      true);            // the player faces the mouse, collisions never spin it
   setRestitution(0.f);  // the player does not bounce off walls
   setFriction(0.f);     // ...and slides along them freely
   setLinearDamping(m_stat->fric);

@@ -17,9 +17,19 @@ constexpr float kCorrectionPercent = 0.8f;
 // Approach speeds below this (plus two steps' worth of gravity) are treated as
 // resting contacts and do not bounce.
 constexpr float kRestingSpeed = 0.01f;
-// Speeds below this are snapped to zero so damped bodies come to a full stop.
+// Speeds below these are snapped to zero so damped bodies come to a full stop.
 constexpr float kSleepSpeed = 0.01f;
+constexpr float kSleepAngularSpeed = 0.001f;
 constexpr float kEpsilon = 1e-6f;
+
+// Applies `impulse` to `body` at the contact offset `r` (contact point minus
+// body position) without the virtual position lookup of applyImpulseAtPoint.
+void applyImpulse(Body &body, const sf::Vector2f &impulse,
+                  const sf::Vector2f &r) {
+  body.setVelocity(body.getVelocity() + impulse * body.getInverseMass());
+  body.setAngularVelocity(body.getAngularVelocity() +
+                          body.getInverseInertia() * cross(r, impulse));
+}
 
 }  // namespace
 
@@ -84,9 +94,9 @@ void PhysicsWorld::findContacts() {
       if (!overlaps(pa.aabb, pb.aabb)) continue;
 
       // Narrow phase
-      Manifold manifold;
-      if (pa.body->collide(*pb.body, manifold))
-        m_contacts.push_back({pa.body, pb.body, manifold});
+      Contact contact{pa.body, pb.body, Manifold{}};
+      if (pa.body->collide(*pb.body, contact.manifold))
+        m_contacts.push_back(contact);
     }
   }
 }
@@ -97,15 +107,16 @@ void PhysicsWorld::prepareContacts(float dt) {
   // off the ground a little each step and slowly gain energy.
   const float threshold = 2.f * (m_gravity * dt).length() + kRestingSpeed;
   for (Contact &contact : m_contacts) {
-    const float approach =
-        -(contact.b->getVelocity() - contact.a->getVelocity())
-             .dot(contact.manifold.normal);
-    if (approach > threshold) {
-      const float restitution =
-          std::min(contact.a->getRestitution(), contact.b->getRestitution());
-      contact.restitution_bias = restitution * approach;
-    } else {
-      contact.restitution_bias = 0.f;
+    const Body &a = *contact.a;
+    const Body &b = *contact.b;
+    const float restitution = std::min(a.getRestitution(), b.getRestitution());
+    for (int i = 0; i < contact.manifold.contact_count; ++i) {
+      const sf::Vector2f p = contact.manifold.contacts[i];
+      const float approach =
+          -(b.getVelocityAtPoint(p) - a.getVelocityAtPoint(p))
+               .dot(contact.manifold.normal);
+      contact.restitution_bias[i] =
+          approach > threshold ? restitution * approach : 0.f;
     }
   }
 }
@@ -113,13 +124,20 @@ void PhysicsWorld::prepareContacts(float dt) {
 void PhysicsWorld::integrateForces(float dt) {
   for (Body *body : m_bodies) {
     sf::Vector2f velocity = body->getVelocity();
-    if (!body->isStatic())
+    float omega = body->getAngularVelocity();
+    if (!body->isStatic()) {
       velocity += (body->getForce() * body->getInverseMass() + m_gravity) * dt;
+      omega += body->getTorque() * body->getInverseInertia() * dt;
+    }
     if (body->getLinearDamping() > 0.f)
       velocity *= std::exp(-body->getLinearDamping() * dt);
+    if (body->getAngularDamping() > 0.f)
+      omega *= std::exp(-body->getAngularDamping() * dt);
     if (velocity.lengthSquared() < kSleepSpeed * kSleepSpeed)
       velocity = {0.f, 0.f};
+    if (std::abs(omega) < kSleepAngularSpeed) omega = 0.f;
     body->setVelocity(velocity);
+    body->setAngularVelocity(omega);
   }
 }
 
@@ -128,34 +146,59 @@ void PhysicsWorld::resolveContact(const Contact &contact) const {
   Body &b = *contact.b;
   const float inv_mass_a = a.getInverseMass();
   const float inv_mass_b = b.getInverseMass();
-  const float inv_mass_sum = inv_mass_a + inv_mass_b;
-  if (inv_mass_sum == 0.f) return;  // two static bodies
-
-  // Normal impulse: bring the separating speed up to the bounce target
-  // (0 for a resting contact, e * approach speed for a bounce).
+  if (inv_mass_a + inv_mass_b == 0.f) return;  // two static bodies
+  const float inv_inertia_a = a.getInverseInertia();
+  const float inv_inertia_b = b.getInverseInertia();
   const sf::Vector2f normal = contact.manifold.normal;
-  sf::Vector2f relative = b.getVelocity() - a.getVelocity();
-  const float along_normal = relative.dot(normal);
-  const float j = (contact.restitution_bias - along_normal) / inv_mass_sum;
-  if (j <= 0.f) return;  // already separating fast enough
-  const sf::Vector2f impulse = normal * j;
-  a.setVelocity(a.getVelocity() - impulse * inv_mass_a);
-  b.setVelocity(b.getVelocity() + impulse * inv_mass_b);
-
-  // Coulomb friction along the contact tangent, clamped by the normal impulse.
-  relative = b.getVelocity() - a.getVelocity();
-  sf::Vector2f tangent = relative - normal * relative.dot(normal);
-  const float tangent_len_sq = tangent.lengthSquared();
-  if (tangent_len_sq < kEpsilon) return;
-  tangent /= std::sqrt(tangent_len_sq);
-
+  const sf::Vector2f pos_a = a.getPosition();
+  const sf::Vector2f pos_b = b.getPosition();
+  const float count = static_cast<float>(contact.manifold.contact_count);
   const float mu = std::sqrt(a.getFriction() * b.getFriction());
-  const float max_friction = j * mu;
-  const float jt = std::clamp(-relative.dot(tangent) / inv_mass_sum,
-                              -max_friction, max_friction);
-  const sf::Vector2f friction = tangent * jt;
-  a.setVelocity(a.getVelocity() - friction * inv_mass_a);
-  b.setVelocity(b.getVelocity() + friction * inv_mass_b);
+
+  for (int i = 0; i < contact.manifold.contact_count; ++i) {
+    const sf::Vector2f p = contact.manifold.contacts[i];
+    const sf::Vector2f ra = p - pos_a;
+    const sf::Vector2f rb = p - pos_b;
+
+    // Normal impulse: bring the separating speed of this point up to the
+    // bounce target (0 for a resting contact, e * approach speed otherwise).
+    sf::Vector2f relative = b.getVelocity() +
+                            cross(b.getAngularVelocity(), rb) -
+                            a.getVelocity() - cross(a.getAngularVelocity(), ra);
+    const float along_normal = relative.dot(normal);
+    const float ra_cross_n = cross(ra, normal);
+    const float rb_cross_n = cross(rb, normal);
+    const float inv_mass_n = inv_mass_a + inv_mass_b +
+                             ra_cross_n * ra_cross_n * inv_inertia_a +
+                             rb_cross_n * rb_cross_n * inv_inertia_b;
+    const float j =
+        (contact.restitution_bias[i] - along_normal) / inv_mass_n / count;
+    if (j <= 0.f) continue;  // already separating fast enough
+    const sf::Vector2f impulse = normal * j;
+    applyImpulse(a, -impulse, ra);
+    applyImpulse(b, impulse, rb);
+
+    // Coulomb friction along the contact tangent, clamped by the normal
+    // impulse. Off-centre friction is what makes bodies roll and spin.
+    relative = b.getVelocity() + cross(b.getAngularVelocity(), rb) -
+               a.getVelocity() - cross(a.getAngularVelocity(), ra);
+    sf::Vector2f tangent = relative - normal * relative.dot(normal);
+    const float tangent_len_sq = tangent.lengthSquared();
+    if (tangent_len_sq < kEpsilon) continue;
+    tangent /= std::sqrt(tangent_len_sq);
+
+    const float ra_cross_t = cross(ra, tangent);
+    const float rb_cross_t = cross(rb, tangent);
+    const float inv_mass_t = inv_mass_a + inv_mass_b +
+                             ra_cross_t * ra_cross_t * inv_inertia_a +
+                             rb_cross_t * rb_cross_t * inv_inertia_b;
+    const float max_friction = j * mu;
+    const float jt = std::clamp(-relative.dot(tangent) / inv_mass_t / count,
+                                -max_friction, max_friction);
+    const sf::Vector2f friction = tangent * jt;
+    applyImpulse(a, -friction, ra);
+    applyImpulse(b, friction, rb);
+  }
 }
 
 void PhysicsWorld::integrateVelocities(float dt) {
@@ -163,6 +206,8 @@ void PhysicsWorld::integrateVelocities(float dt) {
     // Static bodies with a velocity act as kinematic movers.
     const sf::Vector2f velocity = body->getVelocity();
     if (velocity != sf::Vector2f(0.f, 0.f)) body->translate(velocity * dt);
+    const float omega = body->getAngularVelocity();
+    if (omega != 0.f) body->setAngle(body->getAngle() + omega * dt);
     body->clearForces();
   }
 }
@@ -187,23 +232,22 @@ void PhysicsWorld::correctPositions() const {
 void PhysicsWorld::drawDebug(sf::RenderTarget &target) const {
   for (const Body *body : m_bodies) drawShape(target, *body);
 
-  // Contact normals: a short line starting on body a's surface pointing at b.
+  // Contact points as small crosses with the contact normal pointing at b.
+  constexpr float kCrossSize = 1.5f;
   constexpr float kNormalLength = 6.f;
   const sf::Color color(255, 80, 80);
   sf::VertexArray lines(sf::PrimitiveType::Lines);
   for (const Contact &contact : m_contacts) {
     const sf::Vector2f n = contact.manifold.normal;
-    const Shape &shape = contact.a->getShape();
-    // Distance from a's centre to its surface along the normal.
-    const float extent = shape.type == Shape::Type::Circle
-                             ? shape.radius
-                             : std::abs(n.x) * shape.half_size.x +
-                                   std::abs(n.y) * shape.half_size.y;
-    const sf::Vector2f start =
-        contact.a->getPosition() +
-        n * (extent - contact.manifold.penetration / 2.f);
-    lines.append(sf::Vertex{start, color});
-    lines.append(sf::Vertex{start + n * kNormalLength, color});
+    for (int i = 0; i < contact.manifold.contact_count; ++i) {
+      const sf::Vector2f p = contact.manifold.contacts[i];
+      lines.append(sf::Vertex{p - sf::Vector2f(kCrossSize, 0.f), color});
+      lines.append(sf::Vertex{p + sf::Vector2f(kCrossSize, 0.f), color});
+      lines.append(sf::Vertex{p - sf::Vector2f(0.f, kCrossSize), color});
+      lines.append(sf::Vertex{p + sf::Vector2f(0.f, kCrossSize), color});
+      lines.append(sf::Vertex{p, color});
+      lines.append(sf::Vertex{p + n * kNormalLength, color});
+    }
   }
   if (lines.getVertexCount() > 0) target.draw(lines);
 }

@@ -15,24 +15,27 @@ struct Contact {
   Body *a;
   Body *b;
   Manifold manifold;
-  // Separating speed the pair should have after bouncing (0 = no bounce).
-  float restitution_bias = 0.f;
+  // Separating speed each contact point should have after bouncing
+  // (0 = no bounce).
+  float restitution_bias[2] = {0.f, 0.f};
 };
 
 // 2D rigid-body simulation.
 //
 // Each call to step(dt):
 //   1. finds overlapping pairs (sort-and-sweep broad phase on bounding boxes,
-//      then exact circle / box tests),
+//      then exact circle / box tests that also produce contact points),
 //   2. decides which contacts bounce from the velocities before gravity is
 //      applied, so resting bodies never pick up energy from gravity,
-//   3. integrates forces, gravity and damping into velocities,
-//   4. resolves every contact with restitution and friction impulses,
-//   5. integrates velocities into positions,
+//   3. integrates forces, torques, gravity and damping into velocities,
+//   4. resolves every contact point with restitution and friction impulses,
+//      which also spin the bodies when the point is off centre,
+//   5. integrates velocities into positions and angles,
 //   6. nudges overlapping bodies apart so they do not sink into each other.
 //
-// Positions are in pixels, time in seconds. Call step() with a fixed dt for
-// stable, frame-rate independent results. The world does not own its bodies.
+// Positions are in pixels, angles in radians and time in seconds. Call step()
+// with a fixed dt for stable, frame-rate independent results. The world does
+// not own its bodies.
 class PhysicsWorld {
  public:
   using ContactCallback =
@@ -65,7 +68,7 @@ class PhysicsWorld {
   // Contacts found during the most recent step.
   const std::vector<Contact> &getContacts() const { return m_contacts; }
 
-  // Draws every body's collision shape plus the contact normals.
+  // Draws every body's collision shape plus the contact points and normals.
   void drawDebug(sf::RenderTarget &target) const;
 
  private:
