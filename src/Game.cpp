@@ -257,6 +257,10 @@ int runGame(int framerate = 60) {
     m_window.draw(startButton);
   };
 
+  bool using_controller = false;
+  unsigned int active_joystick_id = 0;
+  float last_play_dir = 0.0f;
+
   // Frame statistics for the debug overlay
   unsigned int draw_calls = 0;
   unsigned int physics_steps_frame = 0;
@@ -319,6 +323,19 @@ int runGame(int framerate = 60) {
     while (const std::optional event = m_window.pollEvent()) {
       if (event->is<sf::Event::Closed>()) {
         m_window.close();
+      }
+      if (const auto* joyMoved = event->getIf<sf::Event::JoystickMoved>()) {
+        if (std::abs(joyMoved->position) > 15.0f) {
+          using_controller = true;
+          active_joystick_id = joyMoved->joystickId;
+        }
+      }
+      if (const auto* joyPressed = event->getIf<sf::Event::JoystickButtonPressed>()) {
+        using_controller = true;
+        active_joystick_id = joyPressed->joystickId;
+      }
+      if (event->is<sf::Event::MouseMoved>() || event->is<sf::Event::MouseMovedRaw>() || event->is<sf::Event::KeyPressed>() || event->is<sf::Event::MouseButtonPressed>()) {
+        using_controller = false;
       }
 
       // Handle input based on specific states if needed
@@ -384,33 +401,88 @@ int runGame(int framerate = 60) {
           }
         }
       }
+
+      // Handle Controller specific events
+      if (const sf::Event::JoystickButtonPressed* joystickPressed =
+              event->getIf<sf::Event::JoystickButtonPressed>()) {
+        const unsigned int BTN_A = 0;
+        const unsigned int BTN_START = 7;
+
+        if (game_state == GameState::Menu && joystickPressed->button == BTN_A) {
+          game_state = GameState::Playing;
+        } else if (joystickPressed->button == BTN_START) {
+          if (game_state == GameState::Paused) {
+            game_state = GameState::Playing;
+          } else if (game_state == GameState::Playing) {
+            game_state = GameState::Paused;
+          }
+        }
+      }
     }
 
     // Update logic
     if (game_state == GameState::Playing) {
+      // Handle Controller Movement Input
+      uint8_t current_input = m_input;
+      if (using_controller) {
+        float x = sf::Joystick::getAxisPosition(active_joystick_id, sf::Joystick::Axis::X);
+        float y = sf::Joystick::getAxisPosition(active_joystick_id, sf::Joystick::Axis::Y);
+        float povX = sf::Joystick::getAxisPosition(active_joystick_id, sf::Joystick::Axis::PovX);
+        float povY = sf::Joystick::getAxisPosition(active_joystick_id, sf::Joystick::Axis::PovY);
+        const float deadzone = 15.0f;
+
+        if (x > deadzone || povX > deadzone) current_input |= Player::kRight;
+        if (x < -deadzone || povX < -deadzone) current_input |= Player::kLeft;
+        if (y > deadzone || povY < -deadzone) current_input |= Player::kDown; // SFML Joystick Y is down-positive, PovY is up-positive
+        if (y < -deadzone || povY > deadzone) current_input |= Player::kUp;
+      }
+
       // Step the simulation in fixed increments
       physics_accumulator += std::min(dt, MAX_FRAME_TIME);
       physics_steps_frame = 0;
       physics_us_frame = 0.f;
       while (physics_accumulator >= PHYSICS_DT) {
-        play->update(m_input, PHYSICS_DT);
+        play->update(current_input, PHYSICS_DT);
         m_world.step(PHYSICS_DT);
         physics_accumulator -= PHYSICS_DT;
         ++physics_steps_frame;
         physics_us_frame += m_world.getStats().step_time_us;
       }
 
-      sf::Vector2f mouse_pos =
-          m_window.mapPixelToCoords(sf::Mouse::getPosition(m_window), view);
       sf::Vector2f player_pos = play->getPosition();
-      float play_dir = get_angle(sf::Vector2f(mouse_pos) - player_pos);
+      float play_dir = 0.0f;
+      sf::Vector2f v_center;
+
+      if (using_controller) {
+        float u = sf::Joystick::getAxisPosition(active_joystick_id, sf::Joystick::Axis::U);
+        float v = sf::Joystick::getAxisPosition(active_joystick_id, sf::Joystick::Axis::V);
+        sf::Vector2f aim_dir(u, v);
+        const float deadzone = 15.0f;
+
+        if (aim_dir.lengthSquared() > deadzone * deadzone) {
+          play_dir = get_angle(aim_dir);
+          last_play_dir = play_dir;
+        } else {
+          play_dir = last_play_dir;
+        }
+
+        // Calculate a lookahead based on aim direction (length relative to right stick magnitude)
+        sf::Vector2f lookahead = aim_dir * 1.5f; // scale aim_dir to match mouse feel
+        v_center = sf::Vector2f((3 * player_pos.x + (player_pos.x + lookahead.x)) / 4.0f,
+                                (3 * player_pos.y + (player_pos.y + lookahead.y)) / 4.0f);
+      } else {
+        sf::Vector2f mouse_pos =
+            m_window.mapPixelToCoords(sf::Mouse::getPosition(m_window), view);
+        play_dir = get_angle(mouse_pos - player_pos);
+        last_play_dir = play_dir;
+        v_center = sf::Vector2f((3 * player_pos.x + mouse_pos.x) / 4.0f,
+                                (3 * player_pos.y + mouse_pos.y) / 4.0f);
+      }
 
       // Update Camera View
-      sf::Vector2f v_center((3 * player_pos.x + mouse_pos.x) / 4.0f,
-                            (3 * player_pos.y + mouse_pos.y) / 4.0f);
       view.setCenter(max(v_center, minCenter));
 
-      // Face the mouse
+      // Face the target
       play->setRotation(sf::degrees(play_dir));
     }
 
