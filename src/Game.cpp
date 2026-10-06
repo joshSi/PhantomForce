@@ -244,17 +244,29 @@ int runGame(int framerate = 60) {
   sf::Text titleText(font);
   titleText.setString("Phantom Force");
   titleText.setCharacterSize(48);
-  titleText.setPosition(sf::Vector2f(10, 40));
+  sf::FloatRect titleBounds = titleText.getLocalBounds();
+  titleText.setOrigin(sf::Vector2f(titleBounds.position.x + titleBounds.size.x / 2.0f,
+                                   titleBounds.position.y + titleBounds.size.y / 2.0f));
+  titleText.setPosition(sf::Vector2f(m_window.getSize().x / 2.0f,
+                                     m_window.getSize().y / 3.0f));
+
   Button startButton(
       sf::Vector2f(200, 50),
       sf::Vector2f((std::floor(m_window.getSize().x - 200) / 2.0f),
-                   std::floor((m_window.getSize().y - 50) / 2.0f) + 100),
+                   std::floor((m_window.getSize().y - 50) / 2.0f) + 50),
       "Start Game", font, SMALL_FONT_SIZE);
+
+  Button quitButton(
+      sf::Vector2f(200, 50),
+      sf::Vector2f((std::floor(m_window.getSize().x - 200) / 2.0f),
+                   std::floor((m_window.getSize().y - 50) / 2.0f) + 120),
+      "Quit", font, SMALL_FONT_SIZE);
 
   auto drawMenu = [&]() {
     m_window.setView(m_window.getDefaultView());
     m_window.draw(titleText);
     m_window.draw(startButton);
+    m_window.draw(quitButton);
   };
 
   // Frame statistics for the debug overlay
@@ -380,6 +392,8 @@ int runGame(int framerate = 60) {
           if (mousePressed->button == sf::Mouse::Button::Left) {
             if (startButton.isMouseOver(m_window)) {
               game_state = GameState::Playing;
+            } else if (quitButton.isMouseOver(m_window)) {
+              m_window.close();
             }
           }
         }
@@ -422,6 +436,12 @@ int runGame(int framerate = 60) {
         startButton.setFillColor(sf::Color(170, 170, 170));
       } else {
         startButton.setFillColor(sf::Color(200, 200, 200));
+      }
+
+      if (quitButton.isMouseOver(m_window)) {
+        quitButton.setFillColor(sf::Color(170, 170, 170));
+      } else {
+        quitButton.setFillColor(sf::Color(200, 200, 200));
       }
 
       // Draw Menu (UI View)

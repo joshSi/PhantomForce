@@ -1,0 +1,1 @@
+## 2026-10-05 - Main Menu Improvements **Learning:** I learned how to modify the SFML main menu by adjusting text origin to center it, and adding a new quit button below the start button, handling state changes effectively. **Action:** Next time I need to add UI elements in an SFML project, I will consider centering using `getLocalBounds()` to dynamically adapt to text sizes.
